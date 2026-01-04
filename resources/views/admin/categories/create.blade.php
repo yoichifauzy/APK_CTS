@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '➕ Tambah Kategori')
+@section('page-title')
+    <i class="fa-solid fa-circle-plus me-2"></i>Tambah Kategori
+@endsection
 
 @section('title', 'Tambah Kategori')
 

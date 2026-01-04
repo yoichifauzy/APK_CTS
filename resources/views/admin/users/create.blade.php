@@ -1,26 +1,32 @@
 @extends('layouts.sidebar')
 
 @php
-    $pageTitle = '➕ Tambah Pengguna';
+    $pageTitleText = 'Tambah Pengguna';
+    $pageTitleHtml = '<i class="fa-solid fa-circle-plus me-2"></i>Tambah Pengguna';
     $cardTitle = 'Tambah Pengguna Baru';
-    
+
     if (isset($role)) {
         if ($role === 'admin') {
-            $pageTitle = '➕ Tambah Admin';
+            $pageTitleText = 'Tambah Admin';
+            $pageTitleHtml = '<i class="fa-solid fa-circle-plus me-2"></i>Tambah Admin';
             $cardTitle = 'Tambah Admin Baru';
         } elseif ($role === 'agent') {
-            $pageTitle = '➕ Tambah Operator';
+            $pageTitleText = 'Tambah Operator';
+            $pageTitleHtml = '<i class="fa-solid fa-circle-plus me-2"></i>Tambah Operator';
             $cardTitle = 'Tambah Operator Baru';
         } elseif ($role === 'customer') {
-            $pageTitle = '➕ Tambah User';
+            $pageTitleText = 'Tambah User';
+            $pageTitleHtml = '<i class="fa-solid fa-circle-plus me-2"></i>Tambah User';
             $cardTitle = 'Tambah User Baru';
         }
     }
 @endphp
 
-@section('page-title', $pageTitle)
+@section('page-title')
+    {!! $pageTitleHtml !!}
+@endsection
 
-@section('title', $pageTitle)
+@section('title', $pageTitleText)
 
 @section('content')
 <div class="container-fluid">

@@ -11,6 +11,9 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <!-- Icons -->
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -18,7 +21,8 @@
         <div class="min-h-screen flex flex-col items-center justify-center py-10">
             <div class="text-center text-white">
                 <a href="/" class="inline-flex items-center gap-2 text-2xl font-extrabold tracking-tight">
-                    <span>☁️ CloudTicket</span>
+                    <i class="fa-solid fa-cloud"></i>
+                    <span>CloudTicket</span>
                 </a>
                 <p class="mt-1 text-white/80 text-sm">Modern Customer Support Platform</p>
             </div>

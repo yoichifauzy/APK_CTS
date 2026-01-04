@@ -3,7 +3,7 @@
 
     @if(session('status') === 'profile-updated')
         <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 10px; border-left: 4px solid #16a34a;">
-            ✅ Profil berhasil diperbarui.
+            <i class="fa-solid fa-circle-check me-2"></i>Profil berhasil diperbarui.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -15,13 +15,13 @@
         @method('patch')
 
         <div class="mb-3">
-            <label for="name" class="form-label fw-semibold"><span class="text-primary">👤</span> Nama Lengkap</label>
+            <label for="name" class="form-label fw-semibold"><span class="text-primary"><i class="fa-solid fa-user"></i></span> Nama Lengkap</label>
             <input id="name" name="name" type="text" class="form-control @error('name') is-invalid @enderror" style="border-radius: 10px; padding: 12px;" value="{{ old('name', $user->name) }}" required autofocus autocomplete="name" placeholder="Masukkan nama lengkap">
             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
         <div class="mb-3">
-            <label for="email" class="form-label fw-semibold"><span class="text-primary">📧</span> Email Address</label>
+            <label for="email" class="form-label fw-semibold"><span class="text-primary"><i class="fa-solid fa-envelope"></i></span> Email Address</label>
             <input id="email" name="email" type="email" class="form-control @error('email') is-invalid @enderror" style="border-radius: 10px; padding: 12px;" value="{{ old('email', $user->email) }}" required autocomplete="username" placeholder="email@example.com">
             @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
@@ -38,7 +38,7 @@
         </div>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" style="border-radius: 10px; padding: 10px 24px;">💾 Simpan Perubahan</button>
+            <button class="btn btn-primary" style="border-radius: 10px; padding: 10px 24px;"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Perubahan</button>
         </div>
     </form>
 </section>

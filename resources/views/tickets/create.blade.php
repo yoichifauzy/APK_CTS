@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '➕ Buat Tiket Baru')
+@section('page-title')
+    <i class="fa-solid fa-circle-plus me-2"></i>Buat Tiket Baru
+@endsection
 
 @section('title', 'Buat Tiket')
 
@@ -11,37 +13,37 @@
         .container-fluid {
             padding: 10px 15px;
         }
-        
+
         h1, .h3 {
             font-size: 1.25rem;
         }
-        
+
         .form-label {
             font-size: 14px;
             font-weight: 600;
         }
-        
+
         .form-control, .form-select, textarea {
             font-size: 14px;
             padding: 10px;
         }
-        
+
         .btn {
             width: 100%;
             margin-bottom: 8px;
         }
-        
+
         .form-text {
             font-size: 12px;
         }
     }
-    
+
     @media (max-width: 576px) {
         .alert {
             font-size: 13px;
             padding: 10px;
         }
-        
+
         .card-body {
             padding: 15px;
         }

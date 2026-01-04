@@ -1,6 +1,10 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '📊 Dashboard')
+@section('page-title')
+    <i class="fa-solid fa-chart-line me-2"></i>Dashboard
+@endsection
+
+@section('title', 'Dashboard')
 
 @section('content')
 {{-- DASHBOARD HEADER --}}
@@ -28,56 +32,56 @@
     .stat-card .card-body { min-height: 120px; display: flex; justify-content: space-between; align-items: center; }
     .stat-icon { font-size: 1.8rem; }
     .stat-label { font-size: .9rem; letter-spacing: .02em; text-transform: uppercase; }
-    
+
     /* Responsive dashboard */
     @media (max-width: 992px) {
         .col-lg-2 {
             width: 50%;
         }
-        
+
         .stat-card .card-body {
             min-height: 100px;
         }
-        
+
         .stat-icon {
             font-size: 1.5rem;
         }
     }
-    
+
     @media (max-width: 768px) {
         .d-flex.justify-content-between {
             flex-direction: column;
             gap: 10px;
             text-align: center;
         }
-        
+
         h1.h3 {
             font-size: 1.25rem;
         }
-        
+
         .col-md-4 {
             width: 50%;
         }
-        
+
         .stat-card .card-body {
             min-height: 90px;
             padding: 12px;
         }
-        
+
         h3 {
             font-size: 1.5rem;
         }
     }
-    
+
     @media (max-width: 576px) {
         .col-md-4, .col-lg-2 {
             width: 100%;
         }
-        
+
         .stat-label {
             font-size: 0.8rem;
         }
-        
+
         .stat-icon {
             font-size: 1.3rem;
         }
@@ -92,7 +96,7 @@
                     <div class="stat-label">Total</div>
                     <h3 class="mb-0">{{ $stats['total'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">📋</div>
+                <div class="stat-icon"><i class="fa-solid fa-clipboard-list"></i></div>
             </div>
         </div>
     </div>
@@ -104,7 +108,7 @@
                     <div class="stat-label">Open</div>
                     <h3 class="mb-0">{{ $stats['open'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">🆕</div>
+                <div class="stat-icon"><i class="fa-solid fa-circle-dot"></i></div>
             </div>
         </div>
     </div>
@@ -116,7 +120,7 @@
                     <div class="stat-label">Assigned</div>
                     <h3 class="mb-0">{{ $stats['assigned'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">📌</div>
+                <div class="stat-icon"><i class="fa-solid fa-thumbtack"></i></div>
             </div>
         </div>
     </div>
@@ -128,7 +132,7 @@
                     <div class="stat-label">In Progress</div>
                     <h3 class="mb-0">{{ $stats['in_progress'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">⚙️</div>
+                <div class="stat-icon"><i class="fa-solid fa-gear"></i></div>
             </div>
         </div>
     </div>
@@ -140,7 +144,7 @@
                     <div class="stat-label">Resolved</div>
                     <h3 class="mb-0">{{ $stats['resolved'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">✅</div>
+                <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
             </div>
         </div>
     </div>
@@ -152,7 +156,35 @@
                     <div class="stat-label">Closed</div>
                     <h3 class="mb-0">{{ $stats['closed'] ?? 0 }}</h3>
                 </div>
-                <div class="stat-icon">🔒</div>
+                <div class="stat-icon"><i class="fa-solid fa-lock"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- CHARTS --}}
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-users me-2"></i>Grafik User (Bar)</div>
+            <div class="card-body">
+                <canvas id="chartStatusBar" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Grafik Status (Donat)</div>
+            <div class="card-body">
+                <canvas id="chartStatusDonut" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-tags me-2"></i>Kategori Terbanyak</div>
+            <div class="card-body">
+                <canvas id="chartStatusLine" height="160"></canvas>
             </div>
         </div>
     </div>
@@ -164,48 +196,48 @@
         <div class="card">
             <div class="card-body">
                 @if($role === 'admin')
-                    <h5 class="card-title">🎯 Admin Dashboard</h5>
+                    <h5 class="card-title"><i class="fa-solid fa-bullseye me-2"></i>Admin Dashboard</h5>
 
                     @if(isset($stats['unassigned']) && $stats['unassigned'] > 0)
                         <div class="alert alert-warning mb-3">
-                            <strong>⚠️</strong> {{ $stats['unassigned'] }} tiket belum ditugaskan
+                            <strong><i class="fa-solid fa-triangle-exclamation me-1"></i></strong> {{ $stats['unassigned'] }} tiket belum ditugaskan
                         </div>
                     @endif
 
                     <div class="d-flex flex-wrap gap-2">
                         <a class="btn btn-primary" href="{{ route('tickets.index') }}">
-                            📋 Tiket
+                            <i class="fa-solid fa-ticket me-2"></i>Tiket
                         </a>
                         <a class="btn btn-outline-secondary" href="{{ route('admin.users.index') }}">
-                            👥 Users
+                            <i class="fa-solid fa-users me-2"></i>Users
                         </a>
                     </div>
 
                 @elseif($role === 'agent')
-                    <h5 class="card-title">🔧 Agent Dashboard</h5>
+                    <h5 class="card-title"><i class="fa-solid fa-headset me-2"></i>Agent Dashboard</h5>
 
                     @if($stats['total'] > 0)
                         <div class="d-flex flex-wrap gap-2">
                             <a class="btn btn-primary" href="{{ route('tickets.index') }}">
-                                📋 Tiket yang Harus Dikerjakan ({{ $stats['total'] }})
+                                <i class="fa-solid fa-list-check me-2"></i>Tiket yang Harus Dikerjakan ({{ $stats['total'] }})
                             </a>
                         </div>
                     @else
                         <div class="alert alert-success">
-                            <strong>✅ Semua tiket sudah selesai!</strong><br>
+                            <strong><i class="fa-solid fa-circle-check me-2"></i>Semua tiket sudah selesai!</strong><br>
                             Tidak ada tiket yang perlu dikerjakan saat ini.
                         </div>
                     @endif
 
                 @else
-                    <h5 class="card-title">👤 Customer Dashboard</h5>
+                    <h5 class="card-title"><i class="fa-solid fa-user me-2"></i>Customer Dashboard</h5>
 
                     <div class="d-flex flex-wrap gap-2">
                         <a class="btn btn-primary" href="{{ route('tickets.create') }}">
-                            ➕ Buat Tiket
+                            <i class="fa-solid fa-circle-plus me-2"></i>Buat Tiket
                         </a>
                         <a class="btn btn-outline-secondary" href="{{ route('tickets.index') }}">
-                            📋 Tiket Saya ({{ $stats['total'] }})
+                            <i class="fa-solid fa-ticket me-2"></i>Tiket Saya ({{ $stats['total'] }})
                         </a>
                     </div>
                 @endif
@@ -213,4 +245,118 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        (function(){
+            const statusLabels = ['Open','Assigned','In Progress','Resolved','Closed'];
+            const statusValues = [
+                {{ (int)($stats['open'] ?? 0) }},
+                {{ (int)($stats['assigned'] ?? 0) }},
+                {{ (int)($stats['in_progress'] ?? 0) }},
+                {{ (int)($stats['resolved'] ?? 0) }},
+                {{ (int)($stats['closed'] ?? 0) }},
+            ];
+
+            const colors = [
+                'rgba(108,117,125,0.85)',  // secondary
+                'rgba(13,202,240,0.85)',   // info
+                'rgba(255,193,7,0.85)',    // warning
+                'rgba(25,135,84,0.85)',    // success
+                'rgba(33,37,41,0.85)',     // dark
+            ];
+
+            function byId(id){ return document.getElementById(id); }
+
+            const barEl = byId('chartStatusBar');
+            if (barEl){
+                const userLabels = ['Admin','Agent','Customer'];
+                const userValues = [
+                    {{ (int)($userCounts['admin'] ?? 0) }},
+                    {{ (int)($userCounts['agent'] ?? 0) }},
+                    {{ (int)($userCounts['customer'] ?? 0) }},
+                ];
+                new Chart(barEl, {
+                    type: 'bar',
+                    data: {
+                        labels: userLabels,
+                        datasets: [{
+                            label: 'Jumlah User',
+                            data: userValues,
+                            backgroundColor: [
+                                'rgba(220,53,69,0.85)',  // danger
+                                'rgba(255,193,7,0.85)',  // warning
+                                'rgba(25,135,84,0.85)',  // success
+                            ],
+                            borderRadius: 10,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                });
+            }
+
+            const donutEl = byId('chartStatusDonut');
+            if (donutEl){
+                new Chart(donutEl, {
+                    type: 'doughnut',
+                    data: {
+                        labels: statusLabels,
+                        datasets: [{
+                            data: statusValues,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '62%',
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+
+            const lineEl = byId('chartStatusLine');
+            if (lineEl){
+                const categoryLabels = @json($categoryLabels ?? []);
+                const categoryValues = @json($categoryValues ?? []);
+
+                const hasCategories = Array.isArray(categoryLabels) && categoryLabels.length > 0;
+                const labels = hasCategories ? categoryLabels : ['-'];
+                const values = hasCategories ? categoryValues : [0];
+
+                new Chart(lineEl, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Jumlah Tiket per Kategori',
+                            data: values,
+                            borderColor: 'rgba(37,99,235,0.9)',
+                            backgroundColor: 'rgba(37,99,235,0.12)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
 @endsection

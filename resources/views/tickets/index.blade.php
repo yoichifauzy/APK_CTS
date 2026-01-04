@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '📋 Tiket')
+@section('page-title')
+    <i class="fa-solid fa-ticket me-2"></i>Tiket
+@endsection
 
 @section('title', 'Tiket')
 
@@ -12,41 +14,41 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         table {
             min-width: 700px;
         }
-        
+
         .btn-sm {
             padding: 4px 8px;
             font-size: 12px;
         }
-        
+
         h1.h3 {
             font-size: 1.25rem;
         }
     }
-    
+
     @media (max-width: 576px) {
         .d-flex.justify-content-between {
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .d-flex.justify-content-between > div:first-child,
         .d-flex.justify-content-between > a {
             width: 100%;
             text-align: center;
         }
-        
+
         .btn-primary {
             width: 100%;
         }
-        
+
         table {
             font-size: 13px;
         }
-        
+
         .text-end {
             white-space: nowrap;
         }
@@ -57,21 +59,21 @@
     <div>
         <h1 class="h3 mb-1">
             @if(auth()->user()->role === 'agent')
-                📋 Tiket yang Harus Dikerjakan
+                <i class="fa-solid fa-list-check me-2"></i>Tiket yang Harus Dikerjakan
             @else
-                📋 Daftar Tiket
+                <i class="fa-solid fa-ticket me-2"></i>Daftar Tiket
             @endif
         </h1>
         <div class="text-muted small"><span id="ticket-count">{{ count($tickets) }}</span> tiket</div>
     </div>
     @if(auth()->user()->role === 'customer')
-        <a class="btn btn-primary" href="{{ route('tickets.create') }}">➕ Buat Tiket</a>
+        <a class="btn btn-primary" href="{{ route('tickets.create') }}"><i class="fa-solid fa-circle-plus me-2"></i>Buat Tiket</a>
     @endif
 </div>
 
 @if(auth()->user()->role === 'admin')
 <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
-    <input type="text" id="search-ticket" class="form-control" placeholder="🔍 Cari tiket..." style="flex: 1; min-width: 200px;">
+    <input type="text" id="search-ticket" class="form-control" placeholder="Cari tiket..." style="flex: 1; min-width: 200px;">
     <select id="filter-status" class="form-select" style="flex: 0 0 auto; min-width: 180px;">
         <option value="">Semua Status</option>
         <option value="open">Open</option>
@@ -88,6 +90,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
+                    <th style="width: 60px;">No</th>
                     <th>Judul</th>
                     <th>Kategori</th>
                     <th>Prioritas</th>
@@ -103,6 +106,7 @@
                 @php
                     $statusColors = [
                         'open' => 'secondary',
+                        'assigned' => 'info',
                         'in_progress' => 'warning',
                         'resolved' => 'success',
                         'closed' => 'dark',
@@ -115,6 +119,13 @@
                 @endphp
                 @forelse($tickets as $t)
                     <tr class="ticket-row" data-status="{{ $t['status'] ?? 'open' }}" data-title="{{ strtolower($t['title'] ?? '') }}" data-category="{{ strtolower($t['category'] ?? '') }}" data-customer="{{ strtolower($t['customer_name'] ?? '') }}">
+                        <td>
+                            @if(is_object($tickets) && method_exists($tickets, 'currentPage'))
+                                {{ ($tickets->currentPage() - 1) * $tickets->perPage() + $loop->iteration }}
+                            @else
+                                {{ $loop->iteration }}
+                            @endif
+                        </td>
                         <td>
                             <div class="fw-semibold">{{ Str::limit($t['title'] ?? '-', 40) }}</div>
                             @if(!empty($t['attachments']))
@@ -210,12 +221,12 @@
             const id = el.getAttribute('data-id');
             const status = el.getAttribute('data-status');
             const role = '{{ auth()->user()->role }}';
-            
+
             // Admin bisa hapus tiket dengan status apapun
             if (role === 'admin') {
                 Swal.fire({
-                    title: '🗑️ Hapus Tiket',
-                    html: 'Apakah Anda yakin ingin menghapus tiket ini?<br><small class="text-muted">Status: <strong>' + status.replace(/_/g, ' ') + '</strong></small><br><small class="text-danger">Tindakan ini tidak dapat dibatalkan.</small>',
+                    title: 'Hapus Tiket',
+                    html: '<div class="mb-2 text-danger"><i class="fa-solid fa-trash-can"></i></div>Apakah Anda yakin ingin menghapus tiket ini?<br><small class="text-muted">Status: <strong>' + status.replace(/_/g, ' ') + '</strong></small><br><small class="text-danger">Tindakan ini tidak dapat dibatalkan.</small>',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#dc2626',
@@ -280,13 +291,13 @@
             const title = row.getAttribute('data-title') || '';
             const category = row.getAttribute('data-category') || '';
             const customer = row.getAttribute('data-customer') || '';
-            
+
             const matchesStatus = !statusFilter || status === statusFilter;
-            const matchesSearch = !searchTerm || 
-                title.includes(searchTerm) || 
-                category.includes(searchTerm) || 
+            const matchesSearch = !searchTerm ||
+                title.includes(searchTerm) ||
+                category.includes(searchTerm) ||
                 customer.includes(searchTerm);
-            
+
             if (matchesStatus && matchesSearch) {
                 row.style.display = '';
                 visibleCount++;
@@ -303,7 +314,7 @@
     if (filterStatus) {
         filterStatus.addEventListener('change', filterTickets);
     }
-    
+
     if (searchInput) {
         searchInput.addEventListener('input', filterTickets);
     }

@@ -2,6 +2,10 @@
 
 @section('title', 'Cloud Ticketing System - Modern Customer Support')
 
+@section('no-navbar', '1')
+@section('no-footer', '1')
+@section('fullwidth', '1')
+
 @section('content')
 <style>
     /* Landing only */
@@ -18,14 +22,14 @@
     .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
     .process-step { text-align: center; padding: 20px; }
     .process-number { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; margin: 0 auto 20px; }
-    
+
     /* Responsive hero */
     @media (max-width: 992px) {
         .hero { padding: 80px 20px; min-height: 500px; }
         .hero h1 { font-size: 2.5rem !important; }
         .hero p { font-size: 1rem !important; }
     }
-    
+
     @media (max-width: 768px) {
         .hero { padding: 60px 15px; min-height: auto; text-align: center; }
         .hero h1 { font-size: 2rem !important; text-align: center; }
@@ -38,7 +42,7 @@
         .stat-box { margin-bottom: 20px; }
         .cta-section { padding: 50px 20px; margin: 40px 0; }
     }
-    
+
     @media (max-width: 576px) {
         .hero { padding: 40px 10px; }
         .hero h1 { font-size: 1.75rem !important; }
@@ -62,21 +66,21 @@
                 <div class="d-flex flex-wrap gap-3">
                     @guest
                         <a href="{{ route('register') }}" class="btn btn-light btn-lg btn-modern">
-                            🚀 Mulai Gratis
+                            <i class="fa-solid fa-rocket me-2"></i>Mulai Gratis
                         </a>
                         <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg btn-modern">
-                            🔐 Masuk
+                            <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk
                         </a>
                     @else
                         <a href="{{ route('tickets.index') }}" class="btn btn-light btn-lg btn-modern">
-                            📋 Dashboard
+                            <i class="fa-solid fa-chart-line me-2"></i>Dashboard
                         </a>
                     @endguest
                 </div>
             </div>
             <div class="col-lg-6">
                 <div class="text-center">
-                    <div style="font-size: 13rem; opacity: 0.9;">🎫</div>
+                    <div style="font-size: 13rem; opacity: 0.9;"><i class="fa-solid fa-ticket"></i></div>
                 </div>
             </div>
         </div>
@@ -86,51 +90,51 @@
 {{-- Features Section --}}
 <div class="container my-5 py-5">
     <div class="text-center mb-5">
-        <h2 style="font-size: 2.3rem; font-weight: 700; margin-bottom: 12px;">💡 Kegunaan Website</h2>
-        <p class="text-muted" style="font-size: 1.05rem;">Berbagai manfaat yang dapat Anda peroleh dari platform kami</p>
+        <h2 style="font-size: 2.3rem; font-weight: 700; margin-bottom: 12px;"><i class="fa-solid fa-star me-2"></i>Fitur Unggulan</h2>
+        <p class="text-muted" style="font-size: 1.05rem;">Semua yang Anda butuhkan untuk customer support yang efektif</p>
     </div>
-    
+
     <div class="row g-4">
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">📋</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Kelola Tiket Customer</h4>
-                <p class="text-muted">Organisir semua permintaan bantuan pelanggan dalam satu platform terpusat yang mudah diakses.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);"><i class="fa-solid fa-bolt"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Real-Time Sync</h4>
+                <p class="text-muted">Semua update tersimpan otomatis di cloud. Akses dari mana saja, kapan saja.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">⚡</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Respon Lebih Cepat</h4>
-                <p class="text-muted">Tingkatkan kecepatan respons terhadap pelanggan dengan sistem notifikasi real-time.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);"><i class="fa-solid fa-users"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Multi-Role</h4>
+                <p class="text-muted">Admin, Agent, dan Customer - masing-masing punya akses sesuai kebutuhan.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">👥</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Kolaborasi Tim</h4>
-                <p class="text-muted">Koordinasi antar agent dan admin untuk menyelesaikan masalah pelanggan dengan lebih efisien.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);"><i class="fa-solid fa-chart-line"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Analytics</h4>
+                <p class="text-muted">Dashboard lengkap dengan statistik dan insight untuk keputusan yang lebih baik.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #34d399, #10b981);">📊</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Monitor Performa</h4>
-                <p class="text-muted">Pantau statistik dan performa tim support untuk meningkatkan kualitas layanan.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #34d399, #10b981);"><i class="fa-solid fa-comments"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Comment System</h4>
+                <p class="text-muted">Komunikasi dua arah yang jelas antara customer dan support team.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">🔄</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Tracking Status</h4>
-                <p class="text-muted">Lacak progres setiap tiket dari awal hingga selesai dengan transparan dan akurat.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);"><i class="fa-solid fa-paperclip"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">File Attachments</h4>
+                <p class="text-muted">Upload screenshot, dokumen, atau file apapun untuk memperjelas masalah.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="feature-card">
-                <div class="feature-icon" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">☁️</div>
-                <h4 style="font-weight: 700; margin-bottom: 12px;">Akses Cloud</h4>
-                <p class="text-muted">Akses sistem dari mana saja dan kapan saja dengan penyimpanan cloud yang aman.</p>
+                <div class="feature-icon" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);"><i class="fa-solid fa-bell"></i></div>
+                <h4 style="font-weight: 700; margin-bottom: 12px;">Status Tracking</h4>
+                <p class="text-muted">Pantau progres tiket dari Open sampai Closed dengan timeline yang jelas.</p>
             </div>
         </div>
     </div>
@@ -139,10 +143,10 @@
 {{-- Process Section --}}
 <div class="container my-5 py-5">
     <div class="text-center mb-5">
-        <h2 style="font-size: 2.3rem; font-weight: 700; margin-bottom: 12px;">🚀 Cara Kerja</h2>
+        <h2 style="font-size: 2.3rem; font-weight: 700; margin-bottom: 12px;"><i class="fa-solid fa-rocket me-2"></i>Cara Kerja</h2>
         <p class="text-muted" style="font-size: 1.05rem;">Hanya 4 langkah sederhana</p>
     </div>
-    
+
     <div class="row g-4">
         <div class="col-md-3 col-6">
             <div class="process-step">
@@ -217,17 +221,17 @@
         <div class="d-flex justify-content-center flex-wrap gap-3">
             @guest
                 <a href="{{ route('register') }}" class="btn btn-light btn-lg btn-modern" style="background: white; color: #f5576c;">
-                    🚀 Daftar Sekarang
+                    <i class="fa-solid fa-rocket me-2"></i>Daftar Sekarang
                 </a>
                 <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg btn-modern">
-                    🔐 Masuk
+                    <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk
                 </a>
             @else
                 <a href="{{ route('tickets.create') }}" class="btn btn-light btn-lg btn-modern" style="background: white; color: #f5576c;">
-                    ➕ Buat Tiket Baru
+                    <i class="fa-solid fa-circle-plus me-2"></i>Buat Tiket Baru
                 </a>
                 <a href="{{ route('tickets.index') }}" class="btn btn-outline-light btn-lg btn-modern">
-                    📋 Lihat Tiket
+                    <i class="fa-solid fa-ticket me-2"></i>Lihat Tiket
                 </a>
             @endguest
         </div>

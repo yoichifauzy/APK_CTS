@@ -108,30 +108,60 @@
         .sidebar-nav a {
             display: flex;
             align-items: center;
-            padding: 12px 20px;
+            padding: 12px 14px;
             color: rgba(255,255,255,0.8);
             text-decoration: none;
-            transition: all 0.3s;
-            border-left: 3px solid transparent;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+            margin: 4px 12px;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .sidebar-nav a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            bottom: 10px;
+            width: 3px;
+            border-radius: 999px;
+            background: transparent;
         }
 
         .sidebar-nav a:hover {
             background-color: rgba(255,255,255,0.1);
             color: white;
-            border-left-color: #fbbf24;
+            transform: translateX(2px);
+        }
+
+        .sidebar-nav a:hover::before {
+            background: #fbbf24;
         }
 
         .sidebar-nav a.active {
             background-color: rgba(255,255,255,0.15);
             color: white;
-            border-left-color: #fbbf24;
             font-weight: 500;
         }
 
+        .sidebar-nav a.active::before {
+            background: #fbbf24;
+        }
+
         .sidebar-nav i {
-            width: 20px;
-            margin-right: 12px;
+            width: 22px;
+            margin-right: 0;
             text-align: center;
+        }
+
+        .sidebar-nav span {
+            margin-left: 12px;
+        }
+
+        .sidebar-divider {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
         }
 
         .sidebar-footer {
@@ -442,7 +472,7 @@
             .badge {
                 font-size: 11px;
             }
-            
+
             .sidebar-nav a {
                 padding: 10px 15px;
                 font-size: 14px;
@@ -468,7 +498,7 @@
 <body>
     <!-- Hamburger Button -->
     <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()">
-        <i class="fas fa-bars"></i>
+        <i class="fa-solid fa-bars"></i>
     </button>
 
     <!-- Sidebar Overlay -->
@@ -477,64 +507,80 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h4>☁️ CloudTicket</h4>
+            <h4><i class="fa-solid fa-cloud me-2"></i>CloudTicket</h4>
             <p>Support System</p>
         </div>
 
         <ul class="sidebar-nav">
             <li>
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fa-solid fa-chart-line"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
             <li>
                 <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
-                    <i class="fas fa-ticket-alt"></i>
+                    <i class="fa-solid fa-ticket"></i>
                     <span>Tiket</span>
                 </a>
             </li>
 
             @auth
+                <li>
+                    <a href="{{ route('discussions.index') }}" class="nav-link {{ request()->routeIs('discussions.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-comments"></i>
+                        <span>Diskusi</span>
+                    </a>
+                </li>
+            @endauth
+
+            @auth
                 @if(auth()->user()->role === 'customer')
                     <li>
                         <a href="{{ route('tickets.create') }}" class="nav-link {{ request()->routeIs('tickets.create') ? 'active' : '' }}">
-                            <i class="fas fa-plus-circle"></i>
+                            <i class="fa-solid fa-circle-plus"></i>
                             <span>Buat Tiket</span>
                         </a>
                     </li>
                 @endif
 
+                <li>
+                    <a href="{{ route('barcode.scan') }}" class="nav-link {{ request()->routeIs('barcode.scan') ? 'active' : '' }}">
+                        <i class="fa-solid fa-qrcode"></i>
+                        <span>Scan Barcode</span>
+                    </a>
+                </li>
+
                 {{-- Edit Profile visible to all authenticated users --}}
                 <li>
                     <a href="{{ route('profile.edit') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
-                        <i class="fas fa-user-edit"></i>
+                        <i class="fa-solid fa-user-pen"></i>
                         <span>Edit Profile</span>
                     </a>
                 </li>
 
                 @if(auth()->user()->role === 'admin')
-                    <li style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 10px;">
+                    <li class="sidebar-divider">
                         <a href="{{ route('admin.users.index', ['role' => 'admin']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'admin' ? 'active' : '' }}">
-                            <i class="fas fa-user-shield"></i>
+                            <i class="fa-solid fa-user-shield"></i>
                             <span>Kelola Admin</span>
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('admin.users.index', ['role' => 'agent']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'agent' ? 'active' : '' }}">
-                            <i class="fas fa-user-cog"></i>
+                            <i class="fa-solid fa-user-gear"></i>
                             <span>Kelola Operator</span>
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('admin.users.index', ['role' => 'customer']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'customer' ? 'active' : '' }}">
-                            <i class="fas fa-users"></i>
+                            <i class="fa-solid fa-users"></i>
                             <span>Kelola User</span>
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('admin.categories.index') }}" class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
-                            <i class="fas fa-list"></i>
+                            <i class="fa-solid fa-list"></i>
                             <span>Kategori</span>
                         </a>
                     </li>
@@ -549,22 +595,22 @@
                     <div class="fw-semibold">{{ auth()->user()->name }}</div>
                     @php($role = auth()->user()->role)
                     @if($role === 'admin')
-                        <span style="font-size: 11px; opacity: 0.8;">👑 Admin</span>
+                        <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-crown me-1"></i>Admin</span>
                     @elseif($role === 'agent')
-                        <span style="font-size: 11px; opacity: 0.8;">🔧 Agent</span>
+                        <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-headset me-1"></i>Agent</span>
                     @else
-                        <span style="font-size: 11px; opacity: 0.8;">👤 Customer</span>
+                        <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-user me-1"></i>Customer</span>
                     @endif
                 </div>
                 <form method="POST" action="{{ route('logout') }}" class="d-block" id="logoutForm">
                     @csrf
                     <button type="button" class="btn btn-sm btn-light w-100" onclick="confirmLogout()">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        <i class="fa-solid fa-right-from-bracket me-2"></i>Logout
                     </button>
                 </form>
             @else
                 <a href="{{ route('login') }}" class="btn btn-sm btn-light w-100">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                    <i class="fa-solid fa-right-to-bracket me-2"></i>Login
                 </a>
             @endauth
         </div>
@@ -578,7 +624,7 @@
             <div class="topbar-user">
                 @auth
                     <div class="user-badge">
-                        <i class="fas fa-user-circle"></i>
+                        <i class="fa-solid fa-circle-user"></i>
                         <span class="user-name">{{ auth()->user()->name }}</span>
                     </div>
                 @endauth
@@ -589,14 +635,14 @@
         <div class="content">
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
+                    <i class="fa-solid fa-circle-check me-2"></i>
                     <strong>Berhasil!</strong> {{ session('success') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
             @if(session('error'))
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <i class="fa-solid fa-circle-exclamation me-2"></i>
                     <strong>Error!</strong> {{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -612,7 +658,7 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            
+
             if (sidebar.classList.contains('show-mobile')) {
                 sidebar.classList.remove('show-mobile');
                 overlay.classList.remove('active');

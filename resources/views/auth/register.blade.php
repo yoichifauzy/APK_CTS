@@ -1,5 +1,8 @@
 @extends('layouts.bootstrap')
 
+@section('no-navbar', '1')
+@section('no-footer', '1')
+
 @section('content')
 <style>
     .auth-wrapper { padding: 48px 0; }
@@ -45,6 +48,7 @@
                     <div>
                         <label for="password" class="form-label">Password</label>
                         <input id="password" type="password" name="password" required autocomplete="new-password" class="form-control @error('password') is-invalid @enderror">
+                        <div class="form-text">Password minimal 8 karakter.</div>
                         @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 

@@ -2,24 +2,30 @@
 
 @php
     $role = request('role');
-    $pageTitle = '👥 Manajemen Pengguna';
+    $pageTitleText = 'Manajemen Pengguna';
+    $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Manajemen Pengguna';
     $btnText = 'Tambah Pengguna';
 
     if ($role === 'admin') {
-        $pageTitle = '👑 Manajemen Admin';
+        $pageTitleText = 'Manajemen Admin';
+        $pageTitleHtml = '<i class="fa-solid fa-user-shield me-2"></i>Manajemen Admin';
         $btnText = 'Tambah Admin';
     } elseif ($role === 'agent') {
-        $pageTitle = '🔧 Manajemen Operator';
+        $pageTitleText = 'Manajemen Operator';
+        $pageTitleHtml = '<i class="fa-solid fa-screwdriver-wrench me-2"></i>Manajemen Operator';
         $btnText = 'Tambah Operator';
     } elseif ($role === 'customer') {
-        $pageTitle = '👥 Manajemen User';
+        $pageTitleText = 'Manajemen User';
+        $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Manajemen User';
         $btnText = 'Tambah User';
     }
 @endphp
 
-@section('page-title', $pageTitle)
+@section('page-title')
+    {!! $pageTitleHtml !!}
+@endsection
 
-@section('title', $pageTitle)
+@section('title', $pageTitleText)
 
 @section('content')
 <style>
@@ -29,41 +35,41 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         table {
             min-width: 600px;
         }
     }
-    
+
     @media (max-width: 768px) {
         table {
             font-size: 13px;
         }
-        
+
         .d-flex.justify-content-between {
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .btn-primary {
             width: 100%;
         }
-        
+
         h1.h3 {
             font-size: 1.25rem;
         }
     }
-    
+
     @media (max-width: 576px) {
         .btn-sm {
             padding: 4px 8px;
             font-size: 11px;
         }
-        
+
         table th, table td {
             padding: 8px 6px;
         }
-        
+
         .btn {
             width: 100%;
             margin-bottom: 5px;
@@ -72,8 +78,13 @@
 </style>
 <div class="container-fluid">
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">{{ $pageTitle }}</h1>
-    <div>
+    <h1 class="h3 mb-0">{!! $pageTitleHtml !!}</h1>
+    <div class="d-flex gap-2 align-items-center" style="min-width: 320px;">
+        <div class="input-group" style="max-width: 360px;">
+            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input id="user-search" type="text" class="form-control" placeholder="Cari nama / email..." autocomplete="off">
+            <button class="btn btn-outline-secondary" type="button" id="user-search-clear" title="Clear">Clear</button>
+        </div>
         <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary">{{ $btnText }}</a>
     </div>
 </div>
@@ -98,7 +109,7 @@
                                     $no = 0;
                                 @endphp
                                 {{-- Pagination-aware numbering --}}
-                                @if(method_exists($users, 'currentPage'))
+                                @if(is_object($users) && method_exists($users, 'currentPage'))
                                     {{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}
                                 @else
                                     {{ $loop->iteration }}
@@ -132,10 +143,40 @@
 
 @section('scripts')
 <script>
+// Client-side search (filters current page rows only)
+(function(){
+    const input = document.getElementById('user-search');
+    const clearBtn = document.getElementById('user-search-clear');
+    const table = document.querySelector('table');
+    if (!input || !table) return;
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    function normalize(s){
+        return (s || '').toString().toLowerCase().trim();
+    }
+
+    function applyFilter(){
+        const q = normalize(input.value);
+        rows.forEach(row => {
+            const text = normalize(row.innerText);
+            row.style.display = q === '' || text.includes(q) ? '' : 'none';
+        });
+    }
+
+    input.addEventListener('input', applyFilter);
+    if (clearBtn){
+        clearBtn.addEventListener('click', function(){
+            input.value = '';
+            applyFilter();
+            input.focus();
+        });
+    }
+})();
+
 function confirmDelete(url, userName) {
     Swal.fire({
-        title: '🗑️ Konfirmasi Hapus',
-        html: `Apakah Anda yakin ingin menghapus pengguna <strong>${userName}</strong>?<br><small class="text-muted">Tindakan ini tidak dapat dibatalkan.</small>`,
+        title: 'Konfirmasi Hapus',
+        html: `<div class="mb-2 text-danger"><i class="fa-solid fa-trash-can"></i></div>Apakah Anda yakin ingin menghapus pengguna <strong>${userName}</strong>?<br><small class="text-muted">Tindakan ini tidak dapat dibatalkan.</small>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',

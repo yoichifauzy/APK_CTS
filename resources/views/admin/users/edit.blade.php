@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '✏️ Edit Pengguna')
+@section('page-title')
+    <i class="fa-solid fa-user-pen me-2"></i>Edit Pengguna
+@endsection
 
 @section('title', 'Edit Pengguna')
 

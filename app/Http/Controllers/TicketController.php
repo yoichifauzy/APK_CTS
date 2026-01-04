@@ -272,6 +272,17 @@ class TicketController extends Controller
      */
     public function assignAgent(Request $request, string $id)
     {
+        // Prevent re-assigning / reverting status once ticket is already finished
+        try {
+            $ticket = $this->ticketService->getTicket($id);
+            $cur = $ticket['status'] ?? null;
+            if (in_array($cur, ['resolved', 'closed'], true)) {
+                return back()->with('error', 'Ticket yang sudah Resolved/Closed tidak bisa dikembalikan ke Assigned (Ditugaskan).');
+            }
+        } catch (\Throwable $e) {
+            // ignore - validation below still applies
+        }
+
         // Validasi: agent_id harus valid dan role = agent
         $request->validate([
             'agent_id' => 'required|exists:users,id',
@@ -330,6 +341,11 @@ class TicketController extends Controller
         // If ticket already closed, agents cannot change status at all
         if ($user && $user->role === 'agent' && $currentStatus === 'closed') {
             return back()->with('error', 'Ticket sudah ditutup; Anda tidak dapat mengubah status.');
+        }
+
+        // Disallow reverting from resolved/closed back to assigned
+        if ($request->status === 'assigned' && in_array($currentStatus, ['resolved', 'closed'], true)) {
+            return back()->with('error', 'Ticket yang sudah Resolved/Closed tidak bisa dikembalikan ke Assigned (Ditugaskan).');
         }
 
         // Business rules:

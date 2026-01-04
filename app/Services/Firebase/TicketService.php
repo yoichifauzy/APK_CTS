@@ -85,6 +85,22 @@ class TicketService
         return $tickets;
     }
 
+    /**
+     * Get tickets assigned to an agent (including resolved/closed)
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTicketsByAgentAllStatuses(int $agentId): array
+    {
+        $tickets = Ticket::with(['customer', 'agent', 'category'])
+            ->where('agent_id', $agentId)
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(fn($ticket) => $this->ticketToArray($ticket))
+            ->toArray();
+
+        return $tickets;
+    }
+
     public function createTicket(array $data): string
     {
         $now = new Timestamp(Carbon::now('Asia/Jakarta'));

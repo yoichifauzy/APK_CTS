@@ -1,5 +1,8 @@
 @extends('layouts.bootstrap')
 
+@section('no-navbar', '1')
+@section('no-footer', '1')
+
 @section('content')
 <style>
     .auth-wrapper { padding: 48px 0; }
@@ -21,6 +24,10 @@
                 <div class="alert alert-info">{{ session('status') }}</div>
             @endif
 
+            @if($errors->has('auth'))
+                <div class="alert alert-danger">{{ $errors->first('auth') }}</div>
+            @endif
+
             <div class="auth-card p-4">
                 <form method="POST" action="{{ route('login') }}" class="d-grid gap-3">
                     @csrf
@@ -35,14 +42,6 @@
                         <label for="password" class="form-label">Password</label>
                         <input id="password" type="password" name="password" required autocomplete="current-password" class="form-control @error('password') is-invalid @enderror">
                         @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="remember_me" name="remember">
-                            <label class="form-check-label" for="remember_me">Remember me</label>
-                        </div>
-                        <a href="{{ route('password.request') }}">Lupa password?</a>
                     </div>
 
                     <button class="btn btn-primary w-100" type="submit">Masuk</button>

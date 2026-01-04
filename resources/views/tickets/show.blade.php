@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '📋 ' . ($ticket['title'] ?? 'Tiket'))
+@section('page-title')
+    <i class="fa-solid fa-ticket me-2"></i>{{ $ticket['title'] ?? 'Tiket' }}
+@endsection
 
 @section('title', 'Detail Tiket')
 
@@ -11,127 +13,138 @@
     .panel-header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; letter-spacing: .01em; }
     .timeline { position: relative; padding-left: 24px; }
     .timeline::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: #e5e7eb; }
-    .timeline-item { position: relative; padding: 10px 0 10px 12px; }
-    .timeline-item::before { content: ''; position: absolute; left: -16px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: #2563eb; box-shadow: 0 0 0 4px #e0e7ff; }
+    .timeline-item { position: relative; padding: 10px 0 10px 12px; --tl-rgb: var(--bs-primary-rgb); }
+    .timeline-item::before { content: ''; position: absolute; left: -16px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: rgb(var(--tl-rgb)); box-shadow: 0 0 0 4px rgba(var(--tl-rgb), 0.18); }
     .attachment-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 12px; }
-    .comment { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; background: #fff; box-shadow: 0 6px 16px rgba(15,23,42,0.05); }
-    .comment-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    /* Chat bubbles (WhatsApp-like left/right) */
+    .chat-list { display: flex; flex-direction: column; gap: 10px; }
+    .chat-row { display: flex; align-items: flex-end; gap: 10px; }
+    .chat-row.me { justify-content: flex-end; }
+    .chat-row.other { justify-content: flex-start; }
+    .chat-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#2563eb,#7c3aed); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex: 0 0 auto; }
+    .chat-bubble { max-width: min(720px, 78%); border: 1px solid #e5e7eb; border-radius: 16px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(15,23,42,0.05); }
+    .chat-row.other .chat-bubble { background: #fff; border-top-left-radius: 10px; }
+    .chat-row.me .chat-bubble { background: var(--bs-primary-bg-subtle); border-color: rgba(var(--bs-primary-rgb), 0.18); border-top-right-radius: 10px; }
+    .chat-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+    .chat-name { font-weight: 700; }
+    .chat-time { color: #6b7280; font-size: 12px; white-space: nowrap; }
+    .chat-text { white-space: pre-wrap; }
     .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#2563eb,#7c3aed); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
     .badge-role { font-size: .75rem; }
     .comment-body { background: #f8fafc; border-radius: 10px; padding: 10px 12px; }
-    
+
     /* Responsive styles */
     @media (max-width: 992px) {
         .col-lg-8, .col-lg-4 {
             width: 100%;
             margin-bottom: 20px;
         }
-        
+
         .d-flex.gap-2 {
             flex-wrap: wrap;
         }
     }
-    
+
     @media (max-width: 768px) {
         .container-fluid {
             padding: 0;
         }
-        
+
         .d-flex.justify-content-between {
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .d-flex.gap-2, .d-flex.gap-3 {
             flex-direction: column;
             width: 100%;
             gap: 8px !important;
         }
-        
+
         .btn {
             width: 100%;
         }
-        
+
         .panel {
             border-radius: 10px;
         }
-        
+
         .row.g-3 {
             gap: 10px 0;
         }
-        
+
         .col-md-6 {
             width: 100%;
         }
-        
+
         h1.h3 {
             font-size: 1.25rem;
         }
-        
+
         .attachment-card {
             flex-direction: column;
             text-align: center;
         }
-        
+
         .attachment-card .text-truncate {
             max-width: 100% !important;
         }
     }
-    
+
     @media (max-width: 576px) {
         .pill {
             font-size: 0.75rem;
             padding: 4px 10px;
         }
-        
+
         .badge {
             font-size: 0.7rem;
         }
-        
+
         .comment-meta {
             flex-direction: column;
             align-items: flex-start;
         }
-        
+
         .avatar {
             width: 32px;
             height: 32px;
             font-size: 14px;
         }
-        
+
         .panel-header {
             font-size: 14px;
             padding: 10px 12px;
         }
-        
+
         .btn-sm {
             font-size: 11px;
             padding: 4px 8px;
         }
-        
+
         textarea {
             font-size: 14px;
         }
-        
+
         .container-fluid {
             padding-left: 0;
             padding-right: 0;
         }
-        
+
         .d-flex.align-items-center.gap-3 {
             flex-direction: column;
             align-items: flex-start !important;
             gap: 10px !important;
         }
-        
+
         .card {
             margin-bottom: 15px;
         }
-        
+
         .card-body {
             padding: 12px;
         }
-        
+
         h1.h3 {
             font-size: 1.1rem;
         }
@@ -145,6 +158,7 @@
         @php
             $statusColors = [
                 'open' => 'secondary',
+                'assigned' => 'info',
                 'in_progress' => 'warning',
                 'resolved' => 'success',
                 'closed' => 'dark',
@@ -169,19 +183,45 @@
     </div>
     <div class="d-flex gap-2 align-items-start">
         <a class="btn btn-outline-secondary btn-sm" href="{{ route('tickets.index') }}">Kembali</a>
+
+        @if(in_array(($ticket['status'] ?? 'open'), ['resolved','closed']))
+            <button
+                class="btn btn-outline-primary btn-sm"
+                type="button"
+                id="btn-open-barcode"
+                onclick='(function(){
+                    const payload = @json('cloudticket:' . ($ticket['id'] ?? ''));
+                    const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=520x520&ecc=M&margin=1&data=" + encodeURIComponent(payload);
+                    Swal.fire({
+                        icon: "info",
+                        title: "Barcode Ticket",
+                        html: "<div style=\"display:flex;justify-content:center;\">" +
+                              "<img src=\"" + qrUrl + "\" alt=\"Barcode\" style=\"max-width:100%;width:380px;height:auto;border-radius:12px;border:1px solid #e5e7eb;background:#fff;padding:10px;\" />" +
+                              "</div>",
+                        confirmButtonText: "Tutup"
+                    });
+                })();'
+            >
+                <i class="fa-solid fa-qrcode me-2"></i>Buka Barcode
+            </button>
+            <a class="btn btn-primary btn-sm" href="{{ route('tickets.barcode.download', $ticket['id']) }}">
+                <i class="fa-solid fa-download me-2"></i>Download Barcode
+            </a>
+        @endif
+
         {{-- HANYA customer yang buat ticket DAN status masih 'open' boleh edit --}}
         @if(($ticket['customer_id'] ?? null) === auth()->id() && ($ticket['status'] ?? 'open') === 'open')
             <a class="btn btn-outline-primary" href="{{ route('tickets.edit', $ticket['id']) }}">
-                ✏️ Ubah Ticket
+                <i class="fa-solid fa-pen-to-square me-2"></i>Ubah Ticket
             </a>
         @elseif(($ticket['customer_id'] ?? null) === auth()->id() && ($ticket['status'] ?? 'open') !== 'open')
             <button class="btn btn-outline-secondary" disabled title="Ticket yang sudah diproses tidak bisa diedit">
-                🔒 Terkunci (sudah diproses)
+                <i class="fa-solid fa-lock me-2"></i>Terkunci (sudah diproses)
             </button>
         @endif
         {{-- Admin atau customer bisa hapus --}}
         @if(auth()->user()->role === 'admin' || ($ticket['customer_id'] ?? null) === auth()->id())
-            <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteTicket('{{ route('tickets.destroy', $ticket['id']) }}', '{{ $ticket['status'] ?? 'open' }}')">🗑️ Hapus</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteTicket('{{ route('tickets.destroy', $ticket['id']) }}', '{{ $ticket['status'] ?? 'open' }}')"><i class="fa-solid fa-trash-can me-2"></i>Hapus</button>
         @endif
     </div>
 </div>
@@ -208,7 +248,19 @@
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Agent Ditugaskan</div>
-                        <div class="fw-semibold">@if(!empty($ticket['agent_name'])){{ $ticket['agent_name'] }}@elseif(!empty($ticket['agent_id']))Agent #{{ $ticket['agent_id'] }}@else-@endif</div>
+                        <div class="fw-semibold">
+                            @if(!empty($ticket['agent_name']))
+                                {{ $ticket['agent_name'] }}
+                            @elseif(!empty($ticket['agent_id']))
+                                Agent #{{ $ticket['agent_id'] }}
+                            @else
+                                @if(($ticket['status'] ?? 'open') === 'open')
+                                    Admin Sedang Mencari Agent
+                                @else
+                                    -
+                                @endif
+                            @endif
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Pelanggan</div>
@@ -229,10 +281,22 @@
                     $displayHistory = $history;
                     $hasOpen = collect($displayHistory)->contains(fn($h) => ($h['status'] ?? '') === 'open');
                     if (!$hasOpen) array_unshift($displayHistory, ['status' => 'open', 'changed_at_iso' => $ticket['created_at_iso'] ?? '-']);
+
+                    $timelineRgb = [
+                        'open' => 'var(--bs-secondary-rgb)',
+                        'assigned' => 'var(--bs-info-rgb)',
+                        'in_progress' => 'var(--bs-warning-rgb)',
+                        'resolved' => 'var(--bs-success-rgb)',
+                        'closed' => 'var(--bs-dark-rgb)',
+                    ];
                 @endphp
                 <div class="timeline">
                     @foreach($displayHistory as $h)
-                        <div class="timeline-item d-flex justify-content-between align-items-start gap-2">
+                        @php
+                            $st = $h['status'] ?? '';
+                            $tlRgb = $timelineRgb[$st] ?? 'var(--bs-secondary-rgb)';
+                        @endphp
+                        <div class="timeline-item d-flex justify-content-between align-items-start gap-2" style="--tl-rgb: {{ $tlRgb }};">
                             <div class="fw-semibold">{{ ucfirst(str_replace('_', ' ', $h['status'] ?? '-')) }}</div>
                             <div class="text-muted small">{{ $h['changed_at_iso'] ?? ($ticket['created_at_iso'] ?? '') }}</div>
                         </div>
@@ -267,79 +331,17 @@
 
         <div class="panel">
             <div class="panel-header d-flex align-items-center gap-2">
-                <span>💬 Komentar & Diskusi</span>
+                <span><i class="fa-solid fa-comments me-2"></i>Komentar & Diskusi</span>
                 <span class="badge bg-secondary ms-auto">{{ isset($comments) && is_array($comments) ? count($comments) : 0 }}</span>
             </div>
             <div class="p-3">
-                @if(isset($comments) && is_array($comments) && count($comments) > 0)
-                    <div class="mb-4">
-                        @foreach($comments as $c)
-                            <div class="comment mb-3">
-                                <div class="comment-meta mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="avatar">{{ strtoupper(substr($c['user_name'] ?? 'U',0,1)) }}</div>
-                                        <div>
-                                            <div class="fw-semibold mb-0">{{ $c['user_name'] ?? 'User' }}</div>
-                                            @if(isset($c['user_role']))
-                                                @if($c['user_role'] === 'admin')
-                                                    <span class="badge bg-danger badge-role">Admin</span>
-                                                @elseif($c['user_role'] === 'agent')
-                                                    <span class="badge bg-warning text-dark badge-role">Agent</span>
-                                                @else
-                                                    <span class="badge bg-success badge-role">Customer</span>
-                                                @endif
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="text-muted small">{{ $c['created_at_iso'] ?? '' }}</div>
-                                </div>
-                                <div class="comment-body" style="white-space: pre-wrap;">{{ $c['comment'] ?? $c['message'] ?? '(tidak ada komentar)' }}</div>
-                                @if(isset($c['attachments']) && is_array($c['attachments']) && count($c['attachments']) > 0)
-                                    <div class="mt-2">
-                                        <strong>Bukti / Lampiran:</strong>
-                                        <div class="list-group list-group-flush mt-1">
-                                            @foreach($c['attachments'] as $attc)
-                                                <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                                                    <div class="text-truncate" style="max-width:70%">{{ $attc['name'] ?? basename($attc['path'] ?? 'file') }}</div>
-                                                    <div>
-                                                        @if(!empty($attc['temp_url']))
-                                                            <a class="btn btn-sm btn-outline-primary" href="{{ $attc['temp_url'] }}" target="_blank" rel="noopener">Download</a>
-                                                        @else
-                                                            <span class="text-muted small">(URL tidak tersedia)</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="alert alert-info mb-3">
-                        <strong>ℹ️ Belum ada komentar.</strong><br>
-                        Jadilah yang pertama memberikan update atau pertanyaan!
-                    </div>
-                @endif
-
-                <div class="border-top pt-3">
-                    <form method="POST" action="{{ route('tickets.comments.store', $ticket['id']) }}">
-                        @csrf
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold">Tambah Komentar</label>
-                            <textarea name="message" rows="3" class="form-control @error('message') is-invalid @enderror" placeholder="Contoh: Sedang diperbaiki, butuh sparepart X. Estimasi selesai 2 jam." required>{{ old('message') }}</textarea>
-                            @error('message')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">
-                                💡 Tips: Jelaskan progress, kendala, atau tanya ke pihak terkait
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" type="submit">
-                            📤 Kirim Komentar
-                        </button>
-                    </form>
+                <div class="alert alert-info mb-0">
+                    Komentar dan diskusi dipindahkan ke halaman khusus agar halaman tiket tidak menumpuk.
+                </div>
+                <div class="mt-3">
+                    <a class="btn btn-primary" href="{{ route('discussions.show', $ticket['id']) }}">
+                        <i class="fa-solid fa-message me-2"></i>Buka Halaman Diskusi
+                    </a>
                 </div>
             </div>
         </div>
@@ -349,7 +351,7 @@
         <div class="d-grid gap-3">
             {{-- INFO: Ticket metadata --}}
             <div class="card">
-                <div class="card-header">📝 Informasi Ticket</div>
+                <div class="card-header"><i class="fa-solid fa-circle-info me-2"></i>Informasi Ticket</div>
                 <div class="card-body">
                     <dl class="row mb-0">
                         <dt class="col-6 text-muted">Dibuat</dt>
@@ -362,7 +364,19 @@
                         <dd class="col-6 text-end">{{ $ticket['customer_name'] ?? '-' }}</dd>
 
                         <dt class="col-6 text-muted">Agent</dt>
-                        <dd class="col-6 text-end">{{ $ticket['agent_name'] ?? ($ticket['agent_id'] ? 'Agent #'.$ticket['agent_id'] : '-') }}</dd>
+                        <dd class="col-6 text-end">
+                            @if(!empty($ticket['agent_name']))
+                                {{ $ticket['agent_name'] }}
+                            @elseif(!empty($ticket['agent_id']))
+                                Agent #{{ $ticket['agent_id'] }}
+                            @else
+                                @if(($ticket['status'] ?? 'open') === 'open')
+                                    Admin Sedang Mencari Agent
+                                @else
+                                    -
+                                @endif
+                            @endif
+                        </dd>
                     </dl>
                 </div>
             </div>
@@ -370,16 +384,23 @@
             {{-- Tugaskan Agent (Admin Only) --}}
             @if(auth()->user()->role === 'admin')
                 <div class="card">
-                    <div class="card-header bg-warning text-dark">👷 Tugaskan Agent</div>
+                    <div class="card-header bg-warning text-dark"><i class="fa-solid fa-user-gear me-2"></i>Tugaskan Agent</div>
                     <div class="card-body">
+                        @php($ticketStatus = $ticket['status'] ?? 'open')
+                        @if(in_array($ticketStatus, ['resolved','closed']))
+                            <div class="alert alert-info mb-3">
+                                Ticket sudah <strong>{{ strtoupper($ticketStatus) }}</strong> sehingga tidak bisa ditugaskan kembali.
+                            </div>
+                        @endif
+
                         @if(!empty($ticket['agent_id']))
                             <div class="alert alert-success mb-3">
-                                <strong>✅ Sudah ditugaskan ke:</strong><br>
+                                <strong><i class="fa-solid fa-circle-check me-2"></i>Sudah ditugaskan ke:</strong><br>
                                 <span class="fs-6">{{ $ticket['agent_name'] ?? 'Agent #'.$ticket['agent_id'] }}</span>
                             </div>
                         @else
                             <div class="alert alert-warning mb-3">
-                                <strong>⚠️ Belum ditugaskan!</strong>
+                                <strong><i class="fa-solid fa-triangle-exclamation me-2"></i>Belum ditugaskan!</strong>
                             </div>
                         @endif
 
@@ -387,7 +408,7 @@
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Pilih Agent</label>
-                                <select name="agent_id" class="form-select form-select-sm" required>
+                                <select name="agent_id" class="form-select form-select-sm" required {{ in_array($ticketStatus, ['resolved','closed']) ? 'disabled' : '' }}>
                                     <option value="">-- Pilih Agent --</option>
                                     @if(isset($agents) && (is_array($agents) || (function_exists('is_countable') && is_countable($agents))))
                                         @foreach($agents as $agent)
@@ -396,8 +417,8 @@
                                     @endif
                                 </select>
                             </div>
-                            <button class="btn btn-warning w-100" type="submit" {{ !(isset($agents) && (is_array($agents) || (function_exists('is_countable') && is_countable($agents))) && count($agents) > 0) ? 'disabled' : '' }}>
-                                <strong>📤 Tugaskan Agent</strong>
+                            <button class="btn btn-warning w-100" type="submit" {{ (in_array($ticketStatus, ['resolved','closed']) || !(isset($agents) && (is_array($agents) || (function_exists('is_countable') && is_countable($agents))) && count($agents) > 0)) ? 'disabled' : '' }}>
+                                <strong><i class="fa-solid fa-paper-plane me-2"></i>Tugaskan Agent</strong>
                             </button>
                         </form>
                     </div>
@@ -406,27 +427,23 @@
 
             {{-- Ubah Status (Admin & Agent) --}}
             <div class="card">
-                <div class="card-header">📊 Ubah Status</div>
+                <div class="card-header"><i class="fa-solid fa-chart-line me-2"></i>Ubah Status</div>
                 <div class="card-body">
                     @if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
                         <form method="POST" action="{{ route('tickets.updateStatus', $ticket['id']) }}" enctype="multipart/form-data" id="status-form">
                             @csrf
+                            @php($cur = $ticket['status'] ?? 'open')
                             <div class="mb-2">
                                 <label class="form-label">Status Saat Ini</label>
                                 <select name="status" class="form-select form-select-sm">
-                                    @php
-                                        $cur = $ticket['status'] ?? 'open';
-                                        $role = auth()->user()->role ?? 'customer';
-                                    @endphp
-
-                                    @if($role === 'admin')
-                                        <option value="assigned" @selected($cur==='assigned')>👥 Assigned (Ditugaskan)</option>
-                                        <option value="in_progress" @selected($cur==='in_progress')>⚙️ In Progress (Dikerjakan)</option>
-                                        <option value="resolved" @selected($cur==='resolved')>✅ Resolved (Selesai)</option>
-                                        <option value="closed" @selected($cur==='closed')>🔒 Closed (Ditutup)</option>
-                                    @elseif($role === 'agent')
-                                        <option value="in_progress" @selected($cur==='in_progress')>⚙️ In Progress (Dikerjakan)</option>
-                                        <option value="resolved" @selected($cur==='resolved')>✅ Resolved (Selesai)</option>
+                                    @if((auth()->user()->role ?? 'customer') === 'admin')
+                                        <option value="assigned" @selected($cur==='assigned') {{ in_array($cur, ['resolved','closed']) ? 'disabled' : '' }}>Assigned (Ditugaskan)</option>
+                                        <option value="in_progress" @selected($cur==='in_progress')>In Progress (Dikerjakan)</option>
+                                        <option value="resolved" @selected($cur==='resolved')>Resolved (Selesai)</option>
+                                        <option value="closed" @selected($cur==='closed')>Closed (Ditutup)</option>
+                                    @elseif((auth()->user()->role ?? 'customer') === 'agent')
+                                        <option value="in_progress" @selected($cur==='in_progress')>In Progress (Dikerjakan)</option>
+                                        <option value="resolved" @selected($cur==='resolved')>Resolved (Selesai)</option>
                                     @endif
                                 </select>
                             </div>
@@ -440,7 +457,7 @@
                                         <input type="file" name="evidence[]" class="form-control" multiple accept="image/*,video/*,application/pdf" />
                                     </div>
                                 </div>
-                                <button class="btn btn-primary w-100" type="submit">💾 Perbarui Status</button>
+                                <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Perbarui Status</button>
                             </form>
 
                             @section('scripts')
@@ -530,12 +547,12 @@
 <script>
 function confirmDeleteTicket(url, status) {
     const role = '{{ auth()->user()->role }}';
-    
+
     // Admin bisa hapus tiket dengan status apapun
     if (role === 'admin') {
         Swal.fire({
-            title: '🗑️ Hapus Tiket',
-            html: 'Apakah Anda yakin ingin menghapus tiket ini?<br><small class="text-muted">Status: <strong>' + (status ? status.replace(/_/g, ' ') : 'open') + '</strong></small><br><small class="text-danger">Tindakan ini tidak dapat dibatalkan.</small>',
+            title: 'Hapus Tiket',
+            html: '<div class="mb-2 text-danger"><i class="fa-solid fa-trash-can"></i></div>Apakah Anda yakin ingin menghapus tiket ini?<br><small class="text-muted">Status: <strong>' + (status ? status.replace(/_/g, ' ') : 'open') + '</strong></small><br><small class="text-danger">Tindakan ini tidak dapat dibatalkan.</small>',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc2626',

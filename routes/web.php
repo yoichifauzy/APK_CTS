@@ -5,25 +5,28 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketCommentController;
+use App\Http\Controllers\TicketDiscussionController;
+use App\Http\Controllers\TicketBarcodeController;
 use App\Services\Firebase\FirebaseFactory;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * =================================================================
  * ROUTES WEB.PHP - Definisi semua route/URL aplikasi
  * =================================================================
- * 
+ *
  * PENJELASAN KE DOSEN:
  * File ini adalah "peta jalan" aplikasi yang mendefinisikan:
  * - URL apa saja yang tersedia
  * - Controller mana yang handle URL tersebut
  * - Middleware apa yang melindungi route (auth, role, dll)
- * 
+ *
  * MIDDLEWARE PENTING:
  * - auth: User harus login dulu
  * - role:admin,agent: Hanya admin dan agent yang bisa akses
  * - verified: Email harus terverifikasi (optional)
  * - signed: URL harus valid (untuk download file)
- * 
+ *
  * STRUKTUR ROUTE:
  * 1. Public routes (landing page)
  * 2. Auth routes (login, register) - di auth.php
@@ -54,7 +57,7 @@ Route::get('/', function () {
  * Dashboard - Halaman utama setelah login
  * Route: GET /dashboard
  * Middleware: auth, verified
- * 
+ *
  * LOGIC DASHBOARD:
  * 1. Ambil data user yang sedang login
  * 2. Hitung statistik tickets berdasarkan role user:
@@ -62,7 +65,7 @@ Route::get('/', function () {
  *    - Agent: Lihat tickets yang DI-ASSIGN ke dia (exclude resolved & closed)
  *    - Customer: Lihat tickets MILIK dia saja
  * 3. Tampilkan dashboard dengan card statistik
- * 
+ *
  * STATISTIK YANG DIHITUNG:
  * - open: Jumlah ticket baru (belum ditangani)
  * - assigned: Jumlah ticket yang sudah di-assign ke agent
@@ -74,7 +77,11 @@ Route::get('/', function () {
  */
 Route::get('/dashboard', function () {
     // STEP 1: Ambil data user yang login
-    $user = auth()->user();
+    /** @var \App\Models\User|null $user */
+    $user = Auth::user();
+    if (!$user) {
+        abort(401);
+    }
     $role = $user->role;
 
     // STEP 2: Inisialisasi array statistik
@@ -88,7 +95,7 @@ Route::get('/dashboard', function () {
     ];
 
     // STEP 3: Hitung statistik berdasarkan role user
-    
+
     if ($role === 'admin') {
         // ADMIN: Lihat SEMUA tickets (tanpa filter customer_id atau agent_id)
         $stats['open'] = \App\Models\Ticket::where('status', 'open')->count();
@@ -97,10 +104,9 @@ Route::get('/dashboard', function () {
         $stats['resolved'] = \App\Models\Ticket::where('status', 'resolved')->count();
         $stats['closed'] = \App\Models\Ticket::where('status', 'closed')->count();
         $stats['total'] = \App\Models\Ticket::count();
-        
+
         // Statistik khusus admin: tickets yang belum di-assign
         $stats['unassigned'] = \App\Models\Ticket::whereNull('agent_id')->count();
-        
     } elseif ($role === 'agent') {
         // AGENT: Hanya lihat tickets yang DI-ASSIGN ke dia
         // Exclude tickets yang sudah resolved atau closed (sudah selesai dikerjakan)
@@ -109,12 +115,11 @@ Route::get('/dashboard', function () {
         $stats['in_progress'] = \App\Models\Ticket::where('agent_id', $user->id)->where('status', 'in_progress')->count();
         $stats['resolved'] = \App\Models\Ticket::where('agent_id', $user->id)->where('status', 'resolved')->count();
         $stats['closed'] = \App\Models\Ticket::where('agent_id', $user->id)->where('status', 'closed')->count();
-        
+
         // Total untuk agent: hanya yang belum selesai (exclude resolved & closed)
         $stats['total'] = \App\Models\Ticket::where('agent_id', $user->id)
-                                           ->whereNotIn('status', ['resolved', 'closed'])
-                                           ->count();
-                                           
+            ->whereNotIn('status', ['resolved', 'closed'])
+            ->count();
     } else {
         // CUSTOMER: Hanya lihat tickets MILIK dia (filter by customer_id)
         $stats['open'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'open')->count();
@@ -125,9 +130,35 @@ Route::get('/dashboard', function () {
         $stats['total'] = \App\Models\Ticket::where('customer_id', $user->id)->count();
     }
 
-    // STEP 4: Kirim data stats ke view dashboard
-    // View akan tampilkan dalam bentuk card dengan warna berbeda per status
-    return view('dashboard', compact('stats'));
+    // Grafik: jumlah user per role
+    $userCounts = [
+        'admin' => \App\Models\User::where('role', 'admin')->count(),
+        'agent' => \App\Models\User::where('role', 'agent')->count(),
+        'customer' => \App\Models\User::where('role', 'customer')->count(),
+    ];
+
+    // Grafik: kategori yang paling sering dipilih customer (berdasarkan tickets)
+    // NOTE: Kolom di DB adalah `category_id`, jadi perlu join ke tabel `categories`.
+    $ticketsForCategory = \App\Models\Ticket::query();
+    if ($role === 'agent') {
+        $ticketsForCategory->where('agent_id', $user->id);
+    } elseif ($role !== 'admin') {
+        $ticketsForCategory->where('customer_id', $user->id);
+    }
+
+    $topCategories = $ticketsForCategory
+        ->whereNotNull('tickets.category_id')
+        ->join('categories', 'tickets.category_id', '=', 'categories.id')
+        ->select('categories.name as category', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
+        ->groupBy('categories.name')
+        ->orderByDesc('total')
+        ->limit(5)
+        ->get();
+
+    $categoryLabels = $topCategories->pluck('category')->values();
+    $categoryValues = $topCategories->pluck('total')->map(fn($v) => (int) $v)->values();
+
+    return view('dashboard', compact('stats', 'userCounts', 'categoryLabels', 'categoryValues'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // =================================================================
@@ -138,11 +169,11 @@ Route::get('/dashboard', function () {
  * Firebase Connection Test
  * Route: GET /firebase-test
  * Middleware: auth, role:admin,agent
- * 
+ *
  * FUNGSI:
  * Endpoint untuk test koneksi ke Firebase Firestore & Storage
  * Berguna saat troubleshooting atau verifikasi setup Firebase
- * 
+ *
  * RETURN:
  * JSON response dengan status koneksi Firestore dan Storage
  */
@@ -205,7 +236,7 @@ Route::get('/firebase-test', function () {
 /**
  * Profile Management Routes
  * Middleware: auth (harus login)
- * 
+ *
  * Routes:
  * - GET /profile - Tampilkan form edit profile
  * - PATCH /profile - Update profile (name, email)
@@ -224,17 +255,17 @@ Route::middleware('auth')->group(function () {
 /**
  * Admin Routes Group
  * Middleware: auth, role:admin
- * 
+ *
  * FITUR ADMIN:
  * 1. User Management - CRUD users (buat agent, customer baru, edit role, hapus)
  * 2. Category Management - CRUD kategori tickets
- * 
+ *
  * PERMISSION:
  * Semua route di grup ini HANYA bisa diakses oleh user dengan role 'admin'
  * Jika non-admin coba akses, akan di-redirect atau error 403 Forbidden
  */
 Route::middleware(['auth', 'role:admin'])->group(function () {
-    
+
     // ===== USER MANAGEMENT ROUTES =====
     // Admin bisa kelola semua users (view, create, edit, delete, change role)
     Route::get('/admin/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
@@ -263,24 +294,24 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 /**
  * Ticket Routes Group
  * Middleware: auth, role:customer,admin,agent
- * 
+ *
  * PERMISSION PER ROLE:
  * - Customer: Buat ticket baru, lihat & edit tickets milik mereka, comment di tickets mereka
  * - Agent: Lihat tickets yang di-assign ke mereka, update status, tambah comment
  * - Admin: Lihat semua tickets, assign ke agent, close tickets
- * 
+ *
  * ROUTES:
  * - Resource routes (index, create, store, show, edit, update, destroy)
  * - Custom routes (assign, updateStatus, comments, download)
  */
 Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
-    
+
     // ===== DOWNLOAD ATTACHMENT ROUTE =====
     /**
      * Download File Attachment
      * Route: GET /tickets/{ticket}/attachments/download/{path}
      * Middleware: signed (URL harus valid & tidak expired)
-     * 
+     *
      * KEAMANAN:
      * - URL di-sign dengan expiry time (default 1 jam)
      * - Hanya owner ticket, assigned agent, atau admin yang bisa download
@@ -316,7 +347,7 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
      * Assign Ticket ke Agent
      * Route: POST /tickets/{ticket}/assign
      * Middleware: role:admin (hanya admin)
-     * 
+     *
      * FLOW:
      * 1. Admin pilih agent dari dropdown
      * 2. POST data agent_id
@@ -332,11 +363,11 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
      * Update Status Ticket
      * Route: POST /tickets/{ticket}/status
      * Middleware: role:admin,agent
-     * 
+     *
      * FLOW STATUS:
      * - Agent: bisa ubah ke 'in_progress' atau 'resolved'
      * - Admin: bisa ubah ke 'assigned' atau 'closed'
-     * 
+     *
      * BUSINESS RULES:
      * - Agent tidak bisa langsung close ticket (harus resolved dulu)
      * - Admin hanya bisa close ticket yang sudah resolved
@@ -345,6 +376,20 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
     Route::post('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])
         ->middleware('role:admin,agent')
         ->name('tickets.updateStatus');
+
+    // Barcode (QR) untuk ticket yang sudah resolved
+    Route::get('/tickets/{ticket}/barcode', [TicketBarcodeController::class, 'show'])->name('tickets.barcode.show');
+    Route::get('/tickets/{ticket}/barcode/download', [TicketBarcodeController::class, 'download'])->name('tickets.barcode.download');
+    Route::get('/barcode/data/{ticket}', [TicketBarcodeController::class, 'data'])->name('barcode.data');
+});
+
+Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
+    Route::get('/diskusi', [TicketDiscussionController::class, 'index'])->name('discussions.index');
+    Route::get('/diskusi/{ticket}', [TicketDiscussionController::class, 'show'])->name('discussions.show');
+});
+
+Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
+    Route::get('/scan-barcode', [TicketBarcodeController::class, 'scan'])->name('barcode.scan');
 });
 
 // =================================================================

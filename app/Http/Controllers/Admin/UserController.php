@@ -43,7 +43,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => $data['password'],
+            'password' => Hash::make($data['password']),
             'role' => $data['role'],
         ]);
 
@@ -98,7 +98,7 @@ class UserController extends Controller
         ];
 
         if (!empty($data['password'])) {
-            $update['password'] = $data['password'];
+            $update['password'] = Hash::make($data['password']);
         }
 
         $user->update($update);

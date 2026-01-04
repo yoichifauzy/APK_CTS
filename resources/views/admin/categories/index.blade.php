@@ -1,6 +1,8 @@
 @extends('layouts.sidebar')
 
-@section('page-title', '📂 Manajemen Kategori')
+@section('page-title')
+    <i class="fa-solid fa-folder-open me-2"></i>Manajemen Kategori
+@endsection
 
 @section('title', 'Manajemen Kategori')
 
@@ -12,50 +14,50 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         table {
             min-width: 600px;
         }
     }
-    
+
     @media (max-width: 768px) {
         table {
             font-size: 13px;
         }
-        
+
         .d-flex.justify-content-between {
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .btn-primary {
             width: 100%;
         }
-        
+
         h1.h3 {
             font-size: 1.25rem;
         }
-        
+
         .d-flex.gap-2 {
             gap: 5px !important;
         }
-        
+
         .btn-sm {
             padding: 4px 8px;
             font-size: 11px;
         }
     }
-    
+
     @media (max-width: 576px) {
         table th, table td {
             padding: 8px 6px;
         }
-        
+
         .d-flex.justify-content-end {
             flex-direction: column;
             width: 100%;
         }
-        
+
         .btn {
             width: 100%;
             margin-bottom: 5px;
@@ -121,8 +123,8 @@
 <script>
 function confirmDelete(url, itemName) {
     Swal.fire({
-        title: '🗑️ Konfirmasi Hapus',
-        html: `Apakah Anda yakin ingin menghapus <strong>${itemName}</strong>?<br><small class="text-muted">Tindakan ini tidak dapat dibatalkan.</small>`,
+        title: 'Konfirmasi Hapus',
+        html: `<div class="mb-2 text-danger"><i class="fa-solid fa-trash-can"></i></div>Apakah Anda yakin ingin menghapus <strong>${itemName}</strong>?<br><small class="text-muted">Tindakan ini tidak dapat dibatalkan.</small>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
