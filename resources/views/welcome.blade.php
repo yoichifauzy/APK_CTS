@@ -66,7 +66,7 @@
                 <div class="d-flex flex-wrap gap-3">
                     @guest
                         <a href="{{ route('register') }}" class="btn btn-light btn-lg btn-modern">
-                            <i class="fa-solid fa-rocket me-2"></i>Mulai Gratis
+                            <i class="fa-solid fa-rocket me-2"></i>Mulai Registrasi
                         </a>
                         <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg btn-modern">
                             <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk

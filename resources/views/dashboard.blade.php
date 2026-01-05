@@ -162,34 +162,6 @@
     </div>
 </div>
 
-{{-- CHARTS --}}
-<div class="row g-3 mb-4">
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header"><i class="fa-solid fa-users me-2"></i>Grafik User (Bar)</div>
-            <div class="card-body">
-                <canvas id="chartStatusBar" height="160"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Grafik Status (Donat)</div>
-            <div class="card-body">
-                <canvas id="chartStatusDonut" height="160"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header"><i class="fa-solid fa-tags me-2"></i>Kategori Terbanyak</div>
-            <div class="card-body">
-                <canvas id="chartStatusLine" height="160"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- CONTENT BERDASARKAN ROLE --}}
 <div class="row g-4">
     <div class="col-lg-12">
@@ -245,12 +217,46 @@
         </div>
     </div>
 </div>
+
+{{-- CHARTS - HANYA UNTUK ADMIN --}}
+@if($role === 'admin')
+<div class="row g-3 mt-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-users me-2"></i>Grafik User (Bar)</div>
+            <div class="card-body">
+                <canvas id="chartStatusBar" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Grafik Status (Donat)</div>
+            <div class="card-body">
+                <canvas id="chartStatusDonut" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-tags me-2"></i>Kategori Terbanyak</div>
+            <div class="card-body">
+                <canvas id="chartStatusLine" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @section('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
         (function(){
+            // Grafik hanya untuk admin
+            const isAdmin = '{{ $role }}' === 'admin';
+            if (!isAdmin) return;
+
             const statusLabels = ['Open','Assigned','In Progress','Resolved','Closed'];
             const statusValues = [
                 {{ (int)($stats['open'] ?? 0) }},
@@ -295,6 +301,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: true,
                         plugins: { legend: { display: false } },
                         scales: {
                             y: { beginAtZero: true, ticks: { precision: 0 } }
@@ -317,6 +324,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: true,
                         cutout: '62%',
                         plugins: {
                             legend: { position: 'bottom' }
@@ -350,6 +358,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: true,
                         plugins: { legend: { display: false } },
                         scales: {
                             y: { beginAtZero: true, ticks: { precision: 0 } }

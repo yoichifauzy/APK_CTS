@@ -71,16 +71,21 @@
     @endif
 </div>
 
-@if(auth()->user()->role === 'admin')
+@if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
 <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
     <input type="text" id="search-ticket" class="form-control" placeholder="Cari tiket..." style="flex: 1; min-width: 200px;">
     <select id="filter-status" class="form-select" style="flex: 0 0 auto; min-width: 180px;">
         <option value="">Semua Status</option>
-        <option value="open">Open</option>
-        <option value="assigned">Assigned</option>
-        <option value="in_progress">In Progress</option>
-        <option value="resolved">Resolved</option>
-        <option value="closed">Closed</option>
+        @if(auth()->user()->role === 'admin')
+            <option value="open">Open</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+        @else
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+        @endif
     </select>
 </div>
 @endif
