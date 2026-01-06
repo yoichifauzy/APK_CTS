@@ -3,17 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\Firebase\UserService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::query()->with('category');
 
         // Filter berdasarkan role jika ada parameter ?role=
         if ($request->has('role')) {
@@ -28,7 +30,8 @@ class UserController extends Controller
     public function create(Request $request)
     {
         $role = $request->query('role');
-        return view('admin.users.create', compact('role'));
+        $categories = Category::orderBy('name')->get();
+        return view('admin.users.create', compact('role', 'categories'));
     }
 
     public function store(Request $request, UserService $userService)
@@ -38,13 +41,20 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
             'role' => 'required|in:admin,agent,customer',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
+
+        if (in_array($data['role'], ['admin', 'agent'], true) && empty($data['category_id'])) {
+            return back()->withErrors(['category_id' => 'Kategori/jobdesk wajib dipilih untuk Admin/Agent.'])->withInput();
+        }
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => $data['role'],
+            'category_id' => in_array($data['role'], ['admin', 'agent'], true) ? ($data['category_id'] ?? null) : null,
+            'availability_status' => null,
         ]);
 
         // Write to Firestore (best-effort)
@@ -54,6 +64,8 @@ class UserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'category_id' => (string) ($user->category_id ?? ''),
+                'availability_status' => (string) ($user->availability_status ?? ''),
             ]);
         } catch (\Throwable $e) {
             // Do not fail the whole request if Firestore is unavailable — log and continue
@@ -79,22 +91,36 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return view('admin.users.edit', compact('user'));
+        if ((Auth::user()->role ?? null) === 'super_admin') {
+            abort(403, 'Read-only');
+        }
+        $categories = Category::orderBy('name')->get();
+        return view('admin.users.edit', compact('user', 'categories'));
     }
 
     public function update(Request $request, User $user, UserService $userService)
     {
+        if ((Auth::user()->role ?? null) === 'super_admin') {
+            abort(403, 'Read-only');
+        }
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:6|confirmed',
             'role' => 'required|in:admin,agent,customer',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
+
+        if (in_array($data['role'], ['admin', 'agent'], true) && empty($data['category_id'])) {
+            return back()->withErrors(['category_id' => 'Kategori/jobdesk wajib dipilih untuk Admin/Agent.'])->withInput();
+        }
 
         $update = [
             'name' => $data['name'],
             'email' => $data['email'],
             'role' => $data['role'],
+            'category_id' => in_array($data['role'], ['admin', 'agent'], true) ? ($data['category_id'] ?? null) : null,
+            'availability_status' => null,
         ];
 
         if (!empty($data['password'])) {
@@ -109,6 +135,8 @@ class UserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'category_id' => (string) ($user->category_id ?? ''),
+                'availability_status' => (string) ($user->availability_status ?? ''),
             ]);
         } catch (Throwable $e) {
             logger()->error('Failed to update user in Firestore: ' . $e->getMessage());
@@ -120,6 +148,9 @@ class UserController extends Controller
 
     public function destroy(User $user, UserService $userService)
     {
+        if ((Auth::user()->role ?? null) === 'super_admin') {
+            abort(403, 'Read-only');
+        }
         // Delete Firestore doc (best-effort)
         try {
             $userService->deleteByLaravelId((string)$user->id);
@@ -135,6 +166,9 @@ class UserController extends Controller
 
     public function updateRole(Request $request, User $user)
     {
+        if ((Auth::user()->role ?? null) === 'super_admin') {
+            abort(403, 'Read-only');
+        }
         $request->validate([
             'role' => 'required|in:admin,agent,customer',
         ]);

@@ -519,19 +519,30 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-ticket"></i>
-                    <span>Tiket</span>
-                </a>
+                @auth
+                    @if(auth()->user()->role !== 'super_admin')
+                        <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-ticket"></i>
+                            <span>Tiket</span>
+                        </a>
+                    @endif
+                @else
+                    <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-ticket"></i>
+                        <span>Tiket</span>
+                    </a>
+                @endauth
             </li>
 
             @auth
-                <li>
-                    <a href="{{ route('discussions.index') }}" class="nav-link {{ request()->routeIs('discussions.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-comments"></i>
-                        <span>Diskusi</span>
-                    </a>
-                </li>
+                @if(auth()->user()->role !== 'super_admin')
+                    <li>
+                        <a href="{{ route('discussions.index') }}" class="nav-link {{ request()->routeIs('discussions.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-comments"></i>
+                            <span>Diskusi</span>
+                        </a>
+                    </li>
+                @endif
             @endauth
 
             @auth
@@ -544,12 +555,14 @@
                     </li>
                 @endif
 
-                <li>
-                    <a href="{{ route('barcode.scan') }}" class="nav-link {{ request()->routeIs('barcode.scan') ? 'active' : '' }}">
-                        <i class="fa-solid fa-qrcode"></i>
-                        <span>Scan Barcode</span>
-                    </a>
-                </li>
+                @if(auth()->user()->role !== 'super_admin')
+                    <li>
+                        <a href="{{ route('barcode.scan') }}" class="nav-link {{ request()->routeIs('barcode.scan') ? 'active' : '' }}">
+                            <i class="fa-solid fa-qrcode"></i>
+                            <span>Scan Barcode</span>
+                        </a>
+                    </li>
+                @endif
 
                 {{-- Edit Profile visible to all authenticated users --}}
                 <li>
@@ -559,7 +572,7 @@
                     </a>
                 </li>
 
-                @if(auth()->user()->role === 'admin')
+                @if(auth()->user()->role === 'super_admin')
                     <li class="sidebar-divider">
                         <a href="{{ route('admin.users.index', ['role' => 'admin']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'admin' ? 'active' : '' }}">
                             <i class="fa-solid fa-user-shield"></i>
@@ -569,19 +582,34 @@
                     <li>
                         <a href="{{ route('admin.users.index', ['role' => 'agent']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'agent' ? 'active' : '' }}">
                             <i class="fa-solid fa-user-gear"></i>
-                            <span>Kelola Operator</span>
+                            <span>Daftar Agent</span>
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('admin.users.index', ['role' => 'customer']) }}" class="nav-link {{ request()->routeIs('admin.users.*') && request('role') === 'customer' ? 'active' : '' }}">
                             <i class="fa-solid fa-users"></i>
-                            <span>Kelola User</span>
+                            <span>Daftar Customer</span>
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('admin.categories.index') }}" class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-list"></i>
                             <span>Kategori</span>
+                        </a>
+                    </li>
+                @endif
+
+                @if(auth()->user()->role === 'admin')
+                    <li class="sidebar-divider">
+                        <a href="{{ route('admin.technicians.index') }}" class="nav-link {{ request()->routeIs('admin.technicians.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-user-gear"></i>
+                            <span>Kelola Teknisi</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.technicians.tracking') }}" class="nav-link {{ request()->routeIs('admin.technicians.tracking') ? 'active' : '' }}">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Tracking Teknisi</span>
                         </a>
                     </li>
                 @endif
@@ -593,8 +621,12 @@
             @auth
                 <div style="color: white; font-size: 13px; margin-bottom: 10px; text-align: center;">
                     <div class="fw-semibold">{{ auth()->user()->name }}</div>
-                    @php($role = auth()->user()->role)
-                    @if($role === 'admin')
+                    @php
+                        $role = auth()->user()->role;
+                    @endphp
+                    @if($role === 'super_admin')
+                        <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-crown me-1"></i>Super Admin</span>
+                    @elseif($role === 'admin')
                         <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-crown me-1"></i>Admin</span>
                     @elseif($role === 'agent')
                         <span style="font-size: 11px; opacity: 0.8;"><i class="fa-solid fa-headset me-1"></i>Agent</span>
@@ -627,6 +659,23 @@
                         <i class="fa-solid fa-circle-user"></i>
                         <span class="user-name">{{ auth()->user()->name }}</span>
                     </div>
+                    @php
+                        $jobdesk = null;
+                        try {
+                            $jobdesk = auth()->user()->category->name ?? null;
+                        } catch (\Throwable $e) {
+                            $jobdesk = null;
+                        }
+                    @endphp
+                    @if(in_array(auth()->user()->role ?? null, ['admin','agent'], true))
+                        <span class="badge text-bg-light text-dark" title="Jobdesk/Kategori">
+                            <i class="fa-solid fa-tags me-1"></i>
+                            {{ (auth()->user()->role ?? '') === 'admin' ? 'Admin' : 'Teknisi' }}
+                            @if(!empty($jobdesk ?? null))
+                                — {{ $jobdesk ?? '' }}
+                            @endif
+                        </span>
+                    @endif
                 @endauth
             </div>
         </div>

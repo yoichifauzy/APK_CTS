@@ -74,6 +74,21 @@
                             @endif
                         </div>
 
+                        @php($effectiveRole = $role ?? old('role'))
+                        @if(in_array($effectiveRole, ['admin','agent'], true))
+                            <div class="mb-3">
+                                <label class="form-label">Kategori / Jobdesk</label>
+                                <select name="category_id" class="form-select" required>
+                                    <option value="">-- Pilih Kategori --</option>
+                                    @foreach(($categories ?? []) as $c)
+                                        <option value="{{ $c->id }}" @selected(old('category_id') == $c->id)>{{ $c->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
+                        {{-- Status agent ditentukan otomatis berdasarkan tiket aktif (assigned/in_progress/resolved). --}}
+
                         <div class="d-flex gap-2">
                             <button class="btn btn-primary" type="submit">Buat Pengguna</button>
                             <a href="{{ route('admin.users.index', isset($role) ? ['role' => $role] : []) }}" class="btn btn-outline-secondary">Batal</a>

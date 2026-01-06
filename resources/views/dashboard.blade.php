@@ -18,6 +18,8 @@
     <div>
         @if($role === 'admin')
             <span class="badge text-bg-danger">Admin</span>
+        @elseif($role === 'super_admin')
+            <span class="badge text-bg-dark">Super Admin</span>
         @elseif($role === 'agent')
             <span class="badge text-bg-warning">Agent</span>
         @else
@@ -180,8 +182,20 @@
                         <a class="btn btn-primary" href="{{ route('tickets.index') }}">
                             <i class="fa-solid fa-ticket me-2"></i>Tiket
                         </a>
-                        <a class="btn btn-outline-secondary" href="{{ route('admin.users.index') }}">
-                            <i class="fa-solid fa-users me-2"></i>Users
+                        <a class="btn btn-outline-secondary" href="{{ route('admin.technicians.index') }}">
+                            <i class="fa-solid fa-user-gear me-2"></i>Teknisi
+                        </a>
+                    </div>
+
+                @elseif($role === 'super_admin')
+                    <h5 class="card-title"><i class="fa-solid fa-crown me-2"></i>Super Admin Dashboard</h5>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary" href="{{ route('admin.users.index', ['role' => 'admin']) }}">
+                            <i class="fa-solid fa-user-shield me-2"></i>Kelola Admin
+                        </a>
+                        <a class="btn btn-outline-secondary" href="{{ route('admin.categories.index') }}">
+                            <i class="fa-solid fa-list me-2"></i>Kategori
                         </a>
                     </div>
 
@@ -218,12 +232,12 @@
     </div>
 </div>
 
-{{-- CHARTS - HANYA UNTUK ADMIN --}}
-@if($role === 'admin')
+{{-- CHARTS - HANYA UNTUK SUPER ADMIN --}}
+@if($role === 'super_admin')
 <div class="row g-3 mt-4">
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header"><i class="fa-solid fa-users me-2"></i>Grafik User (Bar)</div>
+            <div class="card-header"><i class="fa-solid fa-users me-2"></i>Jumlah Admin vs Agent</div>
             <div class="card-body">
                 <canvas id="chartStatusBar" height="280"></canvas>
             </div>
@@ -231,7 +245,7 @@
     </div>
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Grafik Status (Donat)</div>
+            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Admin per Jobdesk</div>
             <div class="card-body">
                 <canvas id="chartStatusDonut" height="280"></canvas>
             </div>
@@ -239,7 +253,7 @@
     </div>
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header"><i class="fa-solid fa-tags me-2"></i>Kategori Terbanyak</div>
+            <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Agent per Jobdesk</div>
             <div class="card-body">
                 <canvas id="chartStatusLine" height="280"></canvas>
             </div>
@@ -253,48 +267,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
         (function(){
-            // Grafik hanya untuk admin
-            const isAdmin = '{{ $role }}' === 'admin';
-            if (!isAdmin) return;
-
-            const statusLabels = ['Open','Assigned','In Progress','Resolved','Closed'];
-            const statusValues = [
-                {{ (int)($stats['open'] ?? 0) }},
-                {{ (int)($stats['assigned'] ?? 0) }},
-                {{ (int)($stats['in_progress'] ?? 0) }},
-                {{ (int)($stats['resolved'] ?? 0) }},
-                {{ (int)($stats['closed'] ?? 0) }},
-            ];
-
-            const colors = [
-                'rgba(108,117,125,0.85)',  // secondary
-                'rgba(13,202,240,0.85)',   // info
-                'rgba(255,193,7,0.85)',    // warning
-                'rgba(25,135,84,0.85)',    // success
-                'rgba(33,37,41,0.85)',     // dark
-            ];
+            // Grafik hanya untuk super admin
+            const isSuperAdmin = '{{ $role }}' === 'super_admin';
+            if (!isSuperAdmin) return;
 
             function byId(id){ return document.getElementById(id); }
 
             const barEl = byId('chartStatusBar');
             if (barEl){
-                const userLabels = ['Admin','Agent','Customer'];
+                const userLabels = ['Admin','Agent'];
                 const userValues = [
-                    {{ (int)($userCounts['admin'] ?? 0) }},
-                    {{ (int)($userCounts['agent'] ?? 0) }},
-                    {{ (int)($userCounts['customer'] ?? 0) }},
+                    {{ (int)($adminTotal ?? 0) }},
+                    {{ (int)($agentTotal ?? 0) }},
                 ];
                 new Chart(barEl, {
                     type: 'bar',
                     data: {
                         labels: userLabels,
                         datasets: [{
-                            label: 'Jumlah User',
+                            label: 'Jumlah',
                             data: userValues,
                             backgroundColor: [
                                 'rgba(220,53,69,0.85)',  // danger
                                 'rgba(255,193,7,0.85)',  // warning
-                                'rgba(25,135,84,0.85)',  // success
                             ],
                             borderRadius: 10,
                         }]
@@ -312,13 +307,23 @@
 
             const donutEl = byId('chartStatusDonut');
             if (donutEl){
+                const labels = @json($adminJobdeskLabels ?? []);
+                const values = @json($adminJobdeskValues ?? []);
+
                 new Chart(donutEl, {
                     type: 'doughnut',
                     data: {
-                        labels: statusLabels,
+                        labels: labels.length ? labels : ['-'],
                         datasets: [{
-                            data: statusValues,
-                            backgroundColor: colors,
+                            data: values.length ? values : [0],
+                            backgroundColor: [
+                                'rgba(220,53,69,0.85)',
+                                'rgba(13,202,240,0.85)',
+                                'rgba(255,193,7,0.85)',
+                                'rgba(25,135,84,0.85)',
+                                'rgba(108,117,125,0.85)',
+                                'rgba(111,66,193,0.85)',
+                            ],
                             borderWidth: 0,
                         }]
                     },
@@ -335,33 +340,31 @@
 
             const lineEl = byId('chartStatusLine');
             if (lineEl){
-                const categoryLabels = @json($categoryLabels ?? []);
-                const categoryValues = @json($categoryValues ?? []);
-
-                const hasCategories = Array.isArray(categoryLabels) && categoryLabels.length > 0;
-                const labels = hasCategories ? categoryLabels : ['-'];
-                const values = hasCategories ? categoryValues : [0];
-
+                const labels = @json($agentJobdeskLabels ?? []);
+                const values = @json($agentJobdeskValues ?? []);
                 new Chart(lineEl, {
-                    type: 'line',
+                    type: 'doughnut',
                     data: {
-                        labels,
+                        labels: labels.length ? labels : ['-'],
                         datasets: [{
-                            label: 'Jumlah Tiket per Kategori',
-                            data: values,
-                            borderColor: 'rgba(37,99,235,0.9)',
-                            backgroundColor: 'rgba(37,99,235,0.12)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 4,
+                            data: values.length ? values : [0],
+                            backgroundColor: [
+                                'rgba(255,193,7,0.85)',
+                                'rgba(13,202,240,0.85)',
+                                'rgba(25,135,84,0.85)',
+                                'rgba(108,117,125,0.85)',
+                                'rgba(220,53,69,0.85)',
+                                'rgba(111,66,193,0.85)',
+                            ],
+                            borderWidth: 0,
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        cutout: '62%',
+                        plugins: {
+                            legend: { position: 'bottom' }
                         }
                     }
                 });

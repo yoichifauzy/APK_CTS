@@ -9,18 +9,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * TICKET MODEL - Model untuk data tiket customer support
- * 
+ *
  * PENJELASAN KE DOSEN:
  * Ticket adalah inti dari sistem ini. Setiap customer yang punya masalah akan membuat ticket.
  * Ticket berisi deskripsi masalah, kategori, prioritas, dan status pengerjaannya.
- * 
+ *
  * LIFECYCLE TICKET:
  * 1. OPEN - Customer baru buat ticket
  * 2. ASSIGNED - Admin sudah assign ke agent tertentu
  * 3. IN_PROGRESS - Agent sedang mengerjakan
  * 4. RESOLVED - Agent sudah selesai, perlu konfirmasi admin
  * 5. CLOSED - Admin tutup ticket setelah verifikasi resolved
- * 
+ *
  * FIELD PENTING:
  * - firebase_id: ID di Firestore (untuk real-time sync)
  * - title: Judul singkat masalah
@@ -31,7 +31,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * - status: Status saat ini (open/assigned/in_progress/resolved/closed)
  * - priority: Tingkat urgent (low/medium/high)
  * - attachments: File pendukung (foto/dokumen) dalam format JSON array
- * 
+ *
  * SOFT DELETE:
  * Ticket tidak benar-benar dihapus, hanya di-mark deleted_at
  * Berguna untuk audit trail dan recovery
@@ -48,6 +48,7 @@ class Ticket extends Model
         'firebase_id',
         'title',
         'description',
+        'location',
         'customer_id',
         'agent_id',
         'category_id',

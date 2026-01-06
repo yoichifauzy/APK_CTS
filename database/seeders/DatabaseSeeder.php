@@ -16,11 +16,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // User::factory(10)->create();
-        // Seed example users (admin, agent, customer)
-        $this->call([UserSeeder::class]);
-
-        // Seed categories
+        // Seed categories first (needed for admin/jobdesk assignment)
         $this->call([\Database\Seeders\CategorySeeder::class]);
+
+        // Seed example users (super_admin, admin, agent, customer)
+        $this->call([UserSeeder::class]);
 
         // Keep a simple test user as convenience
         User::updateOrCreate(

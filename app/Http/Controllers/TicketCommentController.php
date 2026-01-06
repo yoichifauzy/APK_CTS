@@ -35,9 +35,25 @@ class TicketCommentController extends Controller
             return redirect()->route('login');
         }
 
-        // Cek permission: customer hanya di ticket mereka, agent/admin bisa semua
-        if ((string)($ticketData['customer_id'] ?? '') !== (string)$user->id && !in_array($user->role, ['admin', 'agent'])) {
-            abort(403);
+        // Cek permission:
+        // - super_admin: semua ticket
+        // - admin: hanya ticket sesuai kategori/jobdesk
+        // - agent: hanya ticket yang di-assign ke dia
+        // - customer: hanya ticket milik dia
+        if ($user->role === 'super_admin') {
+            // allow
+        } elseif ($user->role === 'admin') {
+            if (!$user->category_id || (int) ($ticketData['category_id'] ?? 0) !== (int) $user->category_id) {
+                abort(403);
+            }
+        } elseif ($user->role === 'agent') {
+            if ((string) ($ticketData['agent_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
+        } else {
+            if ((string) ($ticketData['customer_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
         }
 
         // Simpan komentar - PENTING: field database name-nya 'comment', bukan 'message'

@@ -74,6 +74,16 @@
         @enderror
     </div>
 
+    <div class="mb-3">
+        <label for="location" class="form-label">Lokasi</label>
+        <input type="text" name="location" id="location"
+               class="form-control @error('location') is-invalid @enderror"
+               value="{{ old('location', $ticket['location'] ?? '') }}" placeholder="Contoh: Gedung A - Lantai 2 - Ruang Server" required>
+        @error('location')
+        <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
     <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Simpan</button>
         <a class="btn btn-outline-secondary" href="{{ route('tickets.show', $ticket['id']) }}">Batal</a>

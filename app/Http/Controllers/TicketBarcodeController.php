@@ -80,7 +80,7 @@ class TicketBarcodeController extends Controller
             abort(401);
         }
 
-        // Permission: admin can view all, agent only assigned, customer only owner
+        // Permission: admin/super_admin can view all, agent only assigned, customer only owner
         if (($user->role ?? null) === 'customer') {
             if ((string) ($ticketData['customer_id'] ?? '') !== (string) $user->id) {
                 abort(403);
@@ -89,7 +89,7 @@ class TicketBarcodeController extends Controller
             if ((string) ($ticketData['agent_id'] ?? '') !== (string) $user->id) {
                 abort(403);
             }
-        } elseif (($user->role ?? null) !== 'admin') {
+        } elseif (!in_array(($user->role ?? null), ['admin', 'super_admin'], true)) {
             abort(403);
         }
 
@@ -178,7 +178,7 @@ class TicketBarcodeController extends Controller
             return response()->json(['message' => 'Barcode belum tersedia untuk ticket ini.'], 422);
         }
 
-        // Permission: admin can view all, agent only assigned, customer only owner
+        // Permission: admin/super_admin can view all, agent only assigned, customer only owner
         if (($user->role ?? null) === 'customer') {
             if ((string) ($ticketData['customer_id'] ?? '') !== (string) $user->id) {
                 return response()->json(['message' => 'Forbidden'], 403);
@@ -187,7 +187,7 @@ class TicketBarcodeController extends Controller
             if ((string) ($ticketData['agent_id'] ?? '') !== (string) $user->id) {
                 return response()->json(['message' => 'Forbidden'], 403);
             }
-        } elseif (($user->role ?? null) !== 'admin') {
+        } elseif (!in_array(($user->role ?? null), ['admin', 'super_admin'], true)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

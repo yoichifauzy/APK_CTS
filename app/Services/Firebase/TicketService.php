@@ -67,6 +67,22 @@ class TicketService
     }
 
     /**
+     * Get tickets by category (untuk admin per jobdesk/kategori)
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTicketsByCategory(int $categoryId): array
+    {
+        $tickets = Ticket::with(['customer', 'agent', 'category'])
+            ->where('category_id', $categoryId)
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(fn($ticket) => $this->ticketToArray($ticket))
+            ->toArray();
+
+        return $tickets;
+    }
+
+    /**
      * Get tickets by agent (yang DI-ASSIGN ke agent tertentu)
      * @return array<int, array<string, mixed>>
      */
@@ -496,6 +512,7 @@ class TicketService
             'id' => $ticket->firebase_id ?? $ticket->id,
             'title' => $ticket->title,
             'description' => $ticket->description,
+            'location' => $ticket->location,
             'customer_id' => (string)$ticket->customer_id,
             'customer_name' => $ticket->customer->name ?? 'Unknown',
             'agent_id' => $ticket->agent_id ? (string)$ticket->agent_id : null,

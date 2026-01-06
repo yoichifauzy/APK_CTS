@@ -19,8 +19,14 @@ class TicketDiscussionController extends Controller
             return redirect()->route('login');
         }
 
-        if ($user->role === 'admin') {
+        if ($user->role === 'super_admin') {
             $tickets = $this->ticketService->getAllTickets();
+        } elseif ($user->role === 'admin') {
+            if ($user->category_id) {
+                $tickets = $this->ticketService->getTicketsByCategory((int) $user->category_id);
+            } else {
+                $tickets = [];
+            }
         } elseif ($user->role === 'agent') {
             $tickets = $this->ticketService->getTicketsByAgentAllStatuses((int) $user->id);
         } else {
@@ -52,7 +58,11 @@ class TicketDiscussionController extends Controller
             if ((string) ($ticketData['agent_id'] ?? '') !== (string) $user->id) {
                 abort(403);
             }
-        } elseif ($user->role !== 'admin') {
+        } elseif ($user->role === 'admin') {
+            if (!$user->category_id || (int) ($ticketData['category_id'] ?? 0) !== (int) $user->category_id) {
+                abort(403);
+            }
+        } elseif ($user->role !== 'super_admin') {
             abort(403);
         }
 

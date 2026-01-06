@@ -96,17 +96,32 @@ Route::get('/dashboard', function () {
 
     // STEP 3: Hitung statistik berdasarkan role user
 
-    if ($role === 'admin') {
-        // ADMIN: Lihat SEMUA tickets (tanpa filter customer_id atau agent_id)
+    if ($role === 'super_admin') {
+        // SUPER ADMIN: Lihat SEMUA tickets
         $stats['open'] = \App\Models\Ticket::where('status', 'open')->count();
         $stats['assigned'] = \App\Models\Ticket::where('status', 'assigned')->count();
         $stats['in_progress'] = \App\Models\Ticket::where('status', 'in_progress')->count();
         $stats['resolved'] = \App\Models\Ticket::where('status', 'resolved')->count();
         $stats['closed'] = \App\Models\Ticket::where('status', 'closed')->count();
         $stats['total'] = \App\Models\Ticket::count();
+    } elseif ($role === 'admin') {
+        // ADMIN: hanya ticket sesuai kategori/jobdesk
+        $base = \App\Models\Ticket::query();
+        if ($user->category_id) {
+            $base->where('category_id', $user->category_id);
+        } else {
+            $base->whereRaw('1 = 0');
+        }
 
-        // Statistik khusus admin: tickets yang belum di-assign
-        $stats['unassigned'] = \App\Models\Ticket::whereNull('agent_id')->count();
+        $stats['open'] = (clone $base)->where('status', 'open')->count();
+        $stats['assigned'] = (clone $base)->where('status', 'assigned')->count();
+        $stats['in_progress'] = (clone $base)->where('status', 'in_progress')->count();
+        $stats['resolved'] = (clone $base)->where('status', 'resolved')->count();
+        $stats['closed'] = (clone $base)->where('status', 'closed')->count();
+        $stats['total'] = (clone $base)->count();
+
+        // Statistik khusus admin: tickets yang belum di-assign (di kategori dia)
+        $stats['unassigned'] = (clone $base)->whereNull('agent_id')->count();
     } elseif ($role === 'agent') {
         // AGENT: Hanya lihat tickets yang DI-ASSIGN ke dia
         // Exclude tickets yang sudah resolved atau closed (sudah selesai dikerjakan)
@@ -137,12 +152,52 @@ Route::get('/dashboard', function () {
         'customer' => \App\Models\User::where('role', 'customer')->count(),
     ];
 
+    // Super Admin charts (admin/agent totals and per jobdesk)
+    $adminTotal = null;
+    $agentTotal = null;
+    $adminJobdeskLabels = collect();
+    $adminJobdeskValues = collect();
+    $agentJobdeskLabels = collect();
+    $agentJobdeskValues = collect();
+
+    if ($role === 'super_admin') {
+        $adminTotal = (int) \App\Models\User::where('role', 'admin')->count();
+        $agentTotal = (int) \App\Models\User::where('role', 'agent')->count();
+
+        $adminByJobdesk = \App\Models\User::query()
+            ->where('users.role', 'admin')
+            ->leftJoin('categories', 'users.category_id', '=', 'categories.id')
+            ->selectRaw("COALESCE(categories.name, '-') as jobdesk, COUNT(*) as total")
+            ->groupBy('jobdesk')
+            ->orderByDesc('total')
+            ->get();
+
+        $agentByJobdesk = \App\Models\User::query()
+            ->where('users.role', 'agent')
+            ->leftJoin('categories', 'users.category_id', '=', 'categories.id')
+            ->selectRaw("COALESCE(categories.name, '-') as jobdesk, COUNT(*) as total")
+            ->groupBy('jobdesk')
+            ->orderByDesc('total')
+            ->get();
+
+        $adminJobdeskLabels = $adminByJobdesk->pluck('jobdesk')->values();
+        $adminJobdeskValues = $adminByJobdesk->pluck('total')->map(fn($v) => (int) $v)->values();
+        $agentJobdeskLabels = $agentByJobdesk->pluck('jobdesk')->values();
+        $agentJobdeskValues = $agentByJobdesk->pluck('total')->map(fn($v) => (int) $v)->values();
+    }
+
     // Grafik: kategori yang paling sering dipilih customer (berdasarkan tickets)
     // NOTE: Kolom di DB adalah `category_id`, jadi perlu join ke tabel `categories`.
     $ticketsForCategory = \App\Models\Ticket::query();
-    if ($role === 'agent') {
+    if ($role === 'admin') {
+        if ($user->category_id) {
+            $ticketsForCategory->where('tickets.category_id', $user->category_id);
+        } else {
+            $ticketsForCategory->whereRaw('1 = 0');
+        }
+    } elseif ($role === 'agent') {
         $ticketsForCategory->where('agent_id', $user->id);
-    } elseif ($role !== 'admin') {
+    } elseif ($role !== 'super_admin') {
         $ticketsForCategory->where('customer_id', $user->id);
     }
 
@@ -158,7 +213,18 @@ Route::get('/dashboard', function () {
     $categoryLabels = $topCategories->pluck('category')->values();
     $categoryValues = $topCategories->pluck('total')->map(fn($v) => (int) $v)->values();
 
-    return view('dashboard', compact('stats', 'userCounts', 'categoryLabels', 'categoryValues'));
+    return view('dashboard', compact(
+        'stats',
+        'userCounts',
+        'categoryLabels',
+        'categoryValues',
+        'adminTotal',
+        'agentTotal',
+        'adminJobdeskLabels',
+        'adminJobdeskValues',
+        'agentJobdeskLabels',
+        'agentJobdeskValues'
+    ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // =================================================================
@@ -249,22 +315,22 @@ Route::middleware('auth')->group(function () {
 });
 
 // =================================================================
-// ADMIN-ONLY ROUTES - Hanya admin yang bisa akses
+// SUPER ADMIN ROUTES - Hanya super_admin yang bisa akses
 // =================================================================
 
 /**
- * Admin Routes Group
- * Middleware: auth, role:admin
+ * Super Admin Routes Group
+ * Middleware: auth, role:super_admin
  *
- * FITUR ADMIN:
- * 1. User Management - CRUD users (buat agent, customer baru, edit role, hapus)
+ * FITUR SUPER ADMIN:
+ * 1. User Management - CRUD users (terutama admin)
  * 2. Category Management - CRUD kategori tickets
  *
  * PERMISSION:
- * Semua route di grup ini HANYA bisa diakses oleh user dengan role 'admin'
+ * Semua route di grup ini HANYA bisa diakses oleh user dengan role 'super_admin'
  * Jika non-admin coba akses, akan di-redirect atau error 403 Forbidden
  */
-Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::middleware(['auth', 'role:super_admin'])->group(function () {
 
     // ===== USER MANAGEMENT ROUTES =====
     // Admin bisa kelola semua users (view, create, edit, delete, change role)
@@ -285,6 +351,19 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/categories/{category}/edit', [\App\Http\Controllers\Admin\CategoryController::class, 'edit'])->name('admin.categories.edit');
     Route::put('/admin/categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'update'])->name('admin.categories.update');
     Route::delete('/admin/categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy'])->name('admin.categories.destroy');
+});
+
+// =================================================================
+// ADMIN ROUTES - Admin hanya kelola teknisi/operator untuk jobdesk (kategori)
+// =================================================================
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'index'])->name('admin.technicians.index');
+    Route::get('/admin/technicians/tracking', [\App\Http\Controllers\Admin\TechnicianController::class, 'tracking'])->name('admin.technicians.tracking');
+    Route::get('/admin/technicians/create', [\App\Http\Controllers\Admin\TechnicianController::class, 'create'])->name('admin.technicians.create');
+    Route::post('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'store'])->name('admin.technicians.store');
+    Route::get('/admin/technicians/{user}/edit', [\App\Http\Controllers\Admin\TechnicianController::class, 'edit'])->name('admin.technicians.edit');
+    Route::put('/admin/technicians/{user}', [\App\Http\Controllers\Admin\TechnicianController::class, 'update'])->name('admin.technicians.update');
+    Route::delete('/admin/technicians/{user}', [\App\Http\Controllers\Admin\TechnicianController::class, 'destroy'])->name('admin.technicians.destroy');
 });
 
 // =================================================================
@@ -355,7 +434,7 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
      * 4. Agent bisa mulai kerjakan ticket
      */
     Route::post('/tickets/{ticket}/assign', [TicketController::class, 'assignAgent'])
-        ->middleware('role:admin')
+        ->middleware('role:admin,super_admin')
         ->name('tickets.assign');
 
     // ===== ADMIN/AGENT ACTIONS =====
@@ -374,8 +453,13 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
      * - Tidak bisa kembali ke status 'open' setelah assigned
      */
     Route::post('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])
-        ->middleware('role:admin,agent')
+        ->middleware('role:admin,agent,super_admin')
         ->name('tickets.updateStatus');
+
+    // Customer can close their own ticket
+    Route::post('/tickets/{ticket}/customer-close', [TicketController::class, 'customerClose'])
+        ->middleware('role:customer')
+        ->name('tickets.customerClose');
 
     // Barcode (QR) untuk ticket yang sudah resolved
     Route::get('/tickets/{ticket}/barcode', [TicketBarcodeController::class, 'show'])->name('tickets.barcode.show');

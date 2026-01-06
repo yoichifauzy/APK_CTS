@@ -223,6 +223,18 @@
         @if(auth()->user()->role === 'admin' || ($ticket['customer_id'] ?? null) === auth()->id())
             <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteTicket('{{ route('tickets.destroy', $ticket['id']) }}', '{{ $ticket['status'] ?? 'open' }}')"><i class="fa-solid fa-trash-can me-2"></i>Hapus</button>
         @endif
+
+        {{-- Customer bisa Close ticket miliknya --}}
+        @if(auth()->user()->role === 'customer' && ($ticket['customer_id'] ?? null) === auth()->id() && ($ticket['status'] ?? 'open') !== 'closed')
+            <button type="button" class="btn btn-dark btn-sm" onclick="confirmCustomerClose('{{ $ticket['status'] ?? 'open' }}')">
+                <i class="fa-solid fa-circle-xmark me-2"></i>Close Ticket
+            </button>
+
+            <form id="customerCloseForm" method="POST" action="{{ route('tickets.customerClose', $ticket['id']) }}" style="display:none;">
+                @csrf
+                <input type="hidden" name="note" id="customerCloseNote" value="">
+            </form>
+        @endif
     </div>
 </div>
 
@@ -235,6 +247,10 @@
                     <div class="col-md-6">
                         <div class="small text-muted">Kategori</div>
                         <div class="fw-semibold">{{ $ticket['category'] ?? '-' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="small text-muted">Lokasi</div>
+                        <div class="fw-semibold">{{ $ticket['location'] ?? '-' }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Prioritas</div>
@@ -381,8 +397,8 @@
                 </div>
             </div>
 
-            {{-- Tugaskan Agent (Admin Only) --}}
-            @if(auth()->user()->role === 'admin')
+            {{-- Tugaskan Agent (Admin/Super Admin) --}}
+            @if(in_array(auth()->user()->role, ['admin','super_admin'], true))
                 <div class="card">
                     <div class="card-header bg-warning text-dark"><i class="fa-solid fa-user-gear me-2"></i>Tugaskan Agent</div>
                     <div class="card-body">
@@ -404,20 +420,54 @@
                             </div>
                         @endif
 
+                        @php
+                            $hasSelectable = false;
+                            if (isset($agents) && is_iterable($agents)) {
+                                foreach ($agents as $ag) {
+                                    $m = $agentMeta[$ag->id] ?? null;
+                                    if ($m && ($m['selectable'] ?? false)) { $hasSelectable = true; break; }
+                                }
+                            }
+                        @endphp
+
                         <form method="POST" action="{{ route('tickets.assign', $ticket['id']) }}">
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Pilih Agent</label>
-                                <select name="agent_id" class="form-select form-select-sm" required {{ in_array($ticketStatus, ['resolved','closed']) ? 'disabled' : '' }}>
+                                <select id="agent-select" name="agent_id" class="form-select form-select-sm" required {{ in_array($ticketStatus, ['resolved','closed']) ? 'disabled' : '' }}>
                                     <option value="">-- Pilih Agent --</option>
                                     @if(isset($agents) && (is_array($agents) || (function_exists('is_countable') && is_countable($agents))))
                                         @foreach($agents as $agent)
-                                            <option value="{{ $agent->id }}" @selected(isset($ticket['agent_id']) && $ticket['agent_id'] == $agent->id)>{{ $agent->name }}</option>
+                                            @php
+                                                $meta = $agentMeta[$agent->id] ?? null;
+                                                $optText = $meta['label'] ?? 'Open (belum ada kerjaan)';
+                                                $optLabel = $agent->name . ' — ' . $optText;
+                                                $optColor = $meta['color'] ?? 'secondary';
+                                                $optDisabled = ($meta && isset($meta['selectable']) && !$meta['selectable']);
+                                            @endphp
+                                            <option
+                                                value="{{ $agent->id }}"
+                                                @selected(isset($ticket['agent_id']) && $ticket['agent_id'] == $agent->id)
+                                                {{ $optDisabled ? 'disabled' : '' }}
+                                                data-color="{{ $optColor }}"
+                                                data-label="{{ $optText }}"
+                                            >{{ $optLabel }}</option>
                                         @endforeach
                                     @endif
                                 </select>
+
+                                <div class="mt-2" id="agent-status-wrap" style="display:none;">
+                                    <span class="badge" id="agent-status-badge"></span>
+                                </div>
                             </div>
-                            <button class="btn btn-warning w-100" type="submit" {{ (in_array($ticketStatus, ['resolved','closed']) || !(isset($agents) && (is_array($agents) || (function_exists('is_countable') && is_countable($agents))) && count($agents) > 0)) ? 'disabled' : '' }}>
+
+                            @if(!in_array($ticketStatus, ['resolved','closed']) && !$hasSelectable)
+                                <div class="alert alert-info">
+                                    Tidak ada agent tersedia. Semua agent sedang menangani tiket lain (belum Closed).
+                                </div>
+                            @endif
+
+                            <button class="btn btn-warning w-100" type="submit" {{ (in_array($ticketStatus, ['resolved','closed']) || !$hasSelectable) ? 'disabled' : '' }}>
                                 <strong><i class="fa-solid fa-paper-plane me-2"></i>Tugaskan Agent</strong>
                             </button>
                         </form>
@@ -429,14 +479,14 @@
             <div class="card">
                 <div class="card-header"><i class="fa-solid fa-chart-line me-2"></i>Ubah Status</div>
                 <div class="card-body">
-                    @if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
+                    @if(in_array(auth()->user()->role, ['admin','super_admin','agent'], true))
                         <form method="POST" action="{{ route('tickets.updateStatus', $ticket['id']) }}" enctype="multipart/form-data" id="status-form">
                             @csrf
                             @php($cur = $ticket['status'] ?? 'open')
                             <div class="mb-2">
                                 <label class="form-label">Status Saat Ini</label>
                                 <select name="status" class="form-select form-select-sm">
-                                    @if((auth()->user()->role ?? 'customer') === 'admin')
+                                    @if(in_array((auth()->user()->role ?? 'customer'), ['admin','super_admin'], true))
                                         <option value="assigned" @selected($cur==='assigned') {{ in_array($cur, ['resolved','closed']) ? 'disabled' : '' }}>Assigned (Ditugaskan)</option>
                                         <option value="in_progress" @selected($cur==='in_progress')>In Progress (Dikerjakan)</option>
                                         <option value="resolved" @selected($cur==='resolved')>Resolved (Selesai)</option>
@@ -459,73 +509,6 @@
                                 </div>
                                 <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Perbarui Status</button>
                             </form>
-
-                            @section('scripts')
-                            <script>
-                                (function(){
-                                    const form = document.getElementById('status-form');
-                                    if (!form) return;
-                                    const select = form.querySelector('select[name="status"]');
-                                    const evidence = document.getElementById('evidence-section');
-                                    const initialStatus = '{{ $ticket['status'] ?? '' }}';
-                                    const role = '{{ auth()->user()->role ?? '' }}';
-                                    function toggleEvidence(){
-                                        if (!select) return;
-                                        const val = select.value;
-                                        // show evidence inputs only when agent chooses resolved
-                                        if (val === 'resolved' && role === 'agent'){
-                                            evidence.style.display = 'block';
-                                        } else {
-                                            evidence.style.display = 'none';
-                                        }
-                                    }
-                                    if (select){
-                                        // If ticket is already closed, agents must not change it.
-                                        // Disable the select and submit button for clarity.
-                                        if (initialStatus === 'closed' && role === 'agent'){
-                                            select.disabled = true;
-                                            const submitBtn = form.querySelector('button[type="submit"]');
-                                            if (submitBtn) submitBtn.disabled = true;
-                                            // Inform agent once on load
-                                            setTimeout(function(){
-                                                Swal.fire({icon:'info', title:'Ticket sudah ditutup', text:'Ticket yang telah ditutup tidak dapat diubah statusnya oleh agent.'});
-                                            }, 150);
-                                            // ensure evidence hidden
-                                            toggleEvidence();
-                                        }
-
-                                        select.addEventListener('change', function(ev){
-                                            // Normally we toggle evidence when agent selects 'resolved'
-                                            // If the ticket was closed on load we already disabled controls above.
-                                            toggleEvidence();
-                                        });
-
-                                        // init
-                                        toggleEvidence();
-                                    }
-                                    // client-side pre-submit check for agents resolving
-                                    form.addEventListener('submit', function(e){
-                                        try{
-                                            const val = select.value;
-                                            if (val === 'resolved' && role === 'agent'){
-                                                const note = form.querySelector('textarea[name="evidence_note"]').value.trim();
-                                                const files = form.querySelector('input[name="evidence[]"]').files;
-                                                if (!note){
-                                                    e.preventDefault();
-                                                    Swal.fire({icon:'warning', title:'Butuh catatan', text:'Tolong isi catatan bukti kerja sebelum menandai Resolved.'});
-                                                    return false;
-                                                }
-                                                if (!files || files.length === 0){
-                                                    e.preventDefault();
-                                                    Swal.fire({icon:'warning', title:'Butuh bukti', text:'Lampirkan minimal 1 file bukti (foto atau log) sebelum menandai Resolved.'});
-                                                    return false;
-                                                }
-                                            }
-                                        }catch(err){/* ignore */}
-                                    });
-                                })();
-                            </script>
-                            @endsection
                         </form>
                     @else
                         <div class="text-muted">Hanya agent/admin yang bisa ubah status.</div>
@@ -545,6 +528,121 @@
 
 @section('scripts')
 <script>
+// Evidence toggle (agent resolved)
+(function(){
+    const form = document.getElementById('status-form');
+    if (!form) return;
+    const select = form.querySelector('select[name="status"]');
+    const evidence = document.getElementById('evidence-section');
+    const initialStatus = '{{ $ticket['status'] ?? '' }}';
+    const role = '{{ auth()->user()->role ?? '' }}';
+
+    function toggleEvidence(){
+        if (!select || !evidence) return;
+        const val = select.value;
+        if (val === 'resolved' && role === 'agent'){
+            evidence.style.display = 'block';
+        } else {
+            evidence.style.display = 'none';
+        }
+    }
+
+    if (select){
+        if (initialStatus === 'closed' && role === 'agent'){
+            select.disabled = true;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            setTimeout(function(){
+                Swal.fire({icon:'info', title:'Ticket sudah ditutup', text:'Ticket yang telah ditutup tidak dapat diubah statusnya oleh agent.'});
+            }, 150);
+        }
+
+        select.addEventListener('change', toggleEvidence);
+        toggleEvidence();
+    }
+
+    form.addEventListener('submit', function(e){
+        try{
+            if (!select) return;
+            const val = select.value;
+            if (val === 'resolved' && role === 'agent'){
+                const noteEl = form.querySelector('textarea[name="evidence_note"]');
+                const fileEl = form.querySelector('input[name="evidence[]"]');
+                const note = (noteEl ? noteEl.value : '').trim();
+                const files = fileEl ? fileEl.files : null;
+                if (!note){
+                    e.preventDefault();
+                    Swal.fire({icon:'warning', title:'Butuh catatan', text:'Tolong isi catatan bukti kerja sebelum menandai Resolved.'});
+                    return false;
+                }
+                if (!files || files.length === 0){
+                    e.preventDefault();
+                    Swal.fire({icon:'warning', title:'Butuh bukti', text:'Lampirkan minimal 1 file bukti (foto atau log) sebelum menandai Resolved.'});
+                    return false;
+                }
+            }
+        }catch(err){/* ignore */}
+    });
+})();
+
+// Assignment dropdown badge
+(function(){
+    const select = document.getElementById('agent-select');
+    const wrap = document.getElementById('agent-status-wrap');
+    const badge = document.getElementById('agent-status-badge');
+    if (!select || !wrap || !badge) return;
+
+    function update(){
+        const opt = select.options[select.selectedIndex];
+        if (!opt || !opt.value){
+            wrap.style.display = 'none';
+            return;
+        }
+        const color = opt.getAttribute('data-color') || 'secondary';
+        const label = opt.getAttribute('data-label') || '';
+        badge.className = 'badge text-bg-' + color;
+        badge.textContent = label;
+        wrap.style.display = '';
+    }
+
+    select.addEventListener('change', update);
+    update();
+})();
+
+function confirmCustomerClose(currentStatus){
+    const form = document.getElementById('customerCloseForm');
+    const noteEl = document.getElementById('customerCloseNote');
+    if (!form || !noteEl) return;
+
+    if (currentStatus === 'resolved'){
+        noteEl.value = '';
+        form.submit();
+        return;
+    }
+
+    Swal.fire({
+        title: 'Tutup Ticket?',
+        html: 'Wajib isi catatan alasan menutup ticket.',
+        icon: 'warning',
+        input: 'textarea',
+        inputPlaceholder: 'Tuliskan alasan menutup ticket...',
+        inputAttributes: { maxlength: 2000 },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) return 'Catatan wajib diisi.';
+            return null;
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Close',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((res) => {
+        if (res.isConfirmed){
+            noteEl.value = (res.value || '').toString().trim();
+            form.submit();
+        }
+    });
+}
+
 function confirmDeleteTicket(url, status) {
     const role = '{{ auth()->user()->role }}';
 

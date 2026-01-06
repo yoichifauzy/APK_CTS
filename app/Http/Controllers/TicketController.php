@@ -46,9 +46,16 @@ class TicketController extends Controller
         }
 
         // Cek role user untuk filter tickets
-        if ($user->role === 'admin') {
-            // Admin lihat SEMUA tickets
+        if ($user->role === 'super_admin') {
+            // Super Admin lihat SEMUA tickets
             $tickets = $this->ticketService->getAllTickets();
+        } elseif ($user->role === 'admin') {
+            // Admin hanya lihat tickets sesuai jobdesk/kategori
+            if ($user->category_id) {
+                $tickets = $this->ticketService->getTicketsByCategory((int) $user->category_id);
+            } else {
+                $tickets = [];
+            }
         } elseif ($user->role === 'agent') {
             // Agent HANYA lihat tickets yang DI-ASSIGN ke dia
             // Jadi kalau belum di-assign, agent tidak lihat
@@ -81,13 +88,14 @@ class TicketController extends Controller
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
+            'location'    => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'priority'    => 'required|in:low,medium,high',
             'attachments.*' => 'nullable|file|max:2048', // Max 2MB per file
         ]);
 
         // Siapkan data ticket
-        $data = $request->only(['title', 'description', 'priority']);
+        $data = $request->only(['title', 'description', 'location', 'priority']);
 
         // Ambil nama kategori
         $cat = Category::find($request->input('category_id'));
@@ -122,6 +130,29 @@ class TicketController extends Controller
             abort(404);
         }
 
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Authorization: Super Admin all; Admin by category; Agent by assigned; Customer by owner
+        if ($user->role === 'customer') {
+            if ((string) ($ticket['customer_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
+        } elseif ($user->role === 'agent') {
+            if ((string) ($ticket['agent_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
+        } elseif ($user->role === 'admin') {
+            if (!$user->category_id || (int) ($ticket['category_id'] ?? 0) !== (int) $user->category_id) {
+                abort(403);
+            }
+        } elseif ($user->role !== 'super_admin') {
+            abort(403);
+        }
+
         $comments = $this->ticketService->getComments($id);
 
         // Generate temporary URLs for attachments (if any)
@@ -147,10 +178,67 @@ class TicketController extends Controller
             unset($c, $attc);
         }
 
-        // Ambil list agents untuk dropdown (admin only)
+        // Ambil list agents untuk dropdown (admin/super_admin)
         $agents = [];
-        if (Auth::user()->role === 'admin') {
-            $agents = User::where('role', 'agent')->orderBy('name')->get();
+        $agentMeta = [];
+        if (in_array($user->role, ['admin', 'super_admin'], true)) {
+            $q = User::where('role', 'agent');
+            if ($user->role === 'admin') {
+                $q->where('category_id', $user->category_id);
+            }
+
+            $agents = $q->orderBy('name')->get();
+
+            $currentAgentId = null;
+            if (!empty($ticket['agent_id'])) {
+                $currentAgentId = (int) $ticket['agent_id'];
+            }
+
+            $agentIds = $agents->pluck('id')->all();
+            $activeStatus = [];
+            if (count($agentIds) > 0) {
+                // Latest active (status != closed) per agent
+                $rows = Ticket::query()
+                    ->whereIn('agent_id', $agentIds)
+                    ->where('status', '!=', 'closed')
+                    ->orderBy('updated_at', 'desc')
+                    ->get(['agent_id', 'status']);
+
+                foreach ($rows as $r) {
+                    $aid = (int) $r->agent_id;
+                    if (!isset($activeStatus[$aid])) {
+                        $activeStatus[$aid] = (string) $r->status;
+                    }
+                }
+            }
+
+            $labels = [
+                'open' => 'Open (belum ada kerjaan)',
+                'assigned' => 'Assigned',
+                'in_progress' => 'In Progress',
+                'resolved' => 'Resolved',
+                'closed' => 'Closed',
+            ];
+            $colors = [
+                'open' => 'secondary',
+                'assigned' => 'info',
+                'in_progress' => 'warning',
+                'resolved' => 'success',
+                'closed' => 'dark',
+            ];
+
+            foreach ($agents as $a) {
+                $aid = (int) $a->id;
+                $st = $activeStatus[$aid] ?? 'open';
+                $selectable = ($st === 'open') || ($currentAgentId && $aid === $currentAgentId);
+
+                $agentMeta[$aid] = [
+                    'status' => $st,
+                    'label' => $labels[$st] ?? strtoupper($st),
+                    'color' => $colors[$st] ?? 'secondary',
+                    'selectable' => (bool) $selectable,
+                ];
+            }
         }
 
         // Ensure customer and agent names are available for the view
@@ -172,7 +260,7 @@ class TicketController extends Controller
             // ignore lookup failures - view will fallback to ids
         }
 
-        return view('tickets.show', compact('ticket', 'comments', 'agents'));
+        return view('tickets.show', compact('ticket', 'comments', 'agents', 'agentMeta'));
     }
 
     /**
@@ -216,11 +304,12 @@ class TicketController extends Controller
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
+            'location'    => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'priority'    => 'required|in:low,medium,high',
         ]);
 
-        $data = $request->only(['title', 'description', 'priority']);
+        $data = $request->only(['title', 'description', 'location', 'priority']);
         $cat = Category::find($request->input('category_id'));
         if ($cat) {
             $data['category_id'] = (string)$cat->id;
@@ -246,7 +335,7 @@ class TicketController extends Controller
         }
 
         // Admin bisa hapus tiket dengan status apapun
-        if ($user->role === 'admin') {
+        if (in_array($user->role, ['admin', 'super_admin'], true)) {
             $this->ticketService->deleteTicket($id);
             return redirect()->route('tickets.index')->with('success', 'Ticket berhasil dihapus');
         }
@@ -292,6 +381,34 @@ class TicketController extends Controller
         $agent = User::find($request->agent_id);
         if (!$agent || $agent->role !== 'agent') {
             return back()->with('error', 'User yang dipilih bukan agent.');
+        }
+
+        // Enforce eligibility: agent tidak boleh ditugaskan bila masih punya ticket aktif
+        // (status != closed). Exclude ticket yang sedang diproses ini agar re-submit tidak keblok.
+        $agentHasActiveTicket = Ticket::query()
+            ->where('agent_id', (int) $agent->id)
+            ->where('status', '!=', 'closed')
+            ->where('firebase_id', '!=', $id)
+            ->exists();
+        if ($agentHasActiveTicket) {
+            return back()->with('error', 'Agent sedang menangani tiket lain (belum Closed) sehingga tidak bisa ditugaskan lagi.');
+        }
+
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Admin hanya boleh assign ticket sesuai kategori/jobdesk dan agent sesuai kategori
+        if ($user->role === 'admin') {
+            $ticket = $this->ticketService->getTicket($id);
+            if (!$user->category_id || (int) ($ticket['category_id'] ?? 0) !== (int) $user->category_id) {
+                return back()->with('error', 'Ticket ini bukan jobdesk Anda.');
+            }
+            if ((int) ($agent->category_id ?? 0) !== (int) $user->category_id) {
+                return back()->with('error', 'Teknisi tidak sesuai jobdesk/kategori Anda.');
+            }
         }
 
         // Update ticket: assign to agent & set status to 'assigned'
@@ -352,7 +469,7 @@ class TicketController extends Controller
         // - Admin cannot set ticket to 'in_progress' or 'resolved'. Admin may set 'assigned' or 'closed'.
         // - Admin may set 'closed' only when current status is 'resolved' (agent resolved it first).
         // - Agent may set 'in_progress' and 'resolved', but not 'assigned' or 'open'.
-        if ($user && $user->role === 'admin') {
+        if ($user && in_array($user->role, ['admin', 'super_admin'], true)) {
             if (in_array($request->status, ['in_progress', 'resolved'])) {
                 return back()->with('error', 'Admin tidak boleh mengubah status menjadi In Progress atau Resolved. Biarkan agent yang mengubahnya.');
             }
@@ -372,7 +489,7 @@ class TicketController extends Controller
         }
 
         // Other roles are not allowed to change status
-        if ($user && !in_array($user->role, ['admin', 'agent'])) {
+        if ($user && !in_array($user->role, ['admin', 'super_admin', 'agent'])) {
             return back()->with('error', 'Anda tidak memiliki izin untuk mengubah status.');
         }
 
@@ -413,6 +530,59 @@ class TicketController extends Controller
         return back()->with('success', 'Status ticket berhasil diperbarui');
     }
 
+    public function customerClose(Request $request, string $id)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if ($user->role !== 'customer') {
+            abort(403);
+        }
+
+        $ticket = $this->ticketService->getTicket($id);
+        if (!$ticket) {
+            abort(404);
+        }
+
+        if ((string) ($ticket['customer_id'] ?? '') !== (string) $user->id) {
+            abort(403);
+        }
+
+        $currentStatus = (string) ($ticket['status'] ?? 'open');
+        if ($currentStatus === 'closed') {
+            return back()->with('error', 'Ticket sudah Closed.');
+        }
+
+        $needsNote = in_array($currentStatus, ['open', 'assigned', 'in_progress'], true);
+        $validated = $request->validate([
+            'note' => ($needsNote ? 'required' : 'nullable') . '|string|max:2000',
+        ]);
+
+        $this->ticketService->updateTicket($id, ['status' => 'closed']);
+
+        // Store close reason as a public comment (best-effort)
+        $note = trim((string) ($validated['note'] ?? ''));
+        if ($needsNote && $note !== '') {
+            try {
+                $ticketModel = Ticket::where('firebase_id', $id)->first();
+                TicketComment::create([
+                    'ticket_id' => $ticketModel ? $ticketModel->id : null,
+                    'user_id' => $user->id,
+                    'comment' => 'Customer menutup ticket: ' . $note,
+                    'attachments' => [],
+                    'is_internal' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // ignore
+            }
+        }
+
+        return back()->with('success', 'Ticket berhasil ditutup (Closed)');
+    }
+
     public function downloadAttachment(Request $request, string $ticketId, string $path)
     {
         // Signed route middleware will validate signature if route is signed, but we also
@@ -442,8 +612,8 @@ class TicketController extends Controller
         if (!$user) abort(403);
 
         $isOwner = ((string)($ticket['customer_id'] ?? '') === (string)$user->id);
-        $isAssigned = ((string)($ticket['assigned_agent_id'] ?? '') === (string)$user->id);
-        if (!($isOwner || $isAssigned || in_array($user->role, ['admin', 'agent']))) {
+        $isAssigned = ((string)($ticket['agent_id'] ?? '') === (string)$user->id);
+        if (!($isOwner || $isAssigned || in_array($user->role, ['admin', 'super_admin'], true))) {
             abort(403);
         }
 

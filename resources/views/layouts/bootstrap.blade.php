@@ -55,7 +55,9 @@
                         @auth
                             <li class="nav-item">
                                 <span class="navbar-text me-3">{{ auth()->user()->name }}
-                                    @php($role = auth()->user()->role)
+                                    @php
+                                        $role = auth()->user()->role;
+                                    @endphp
                                     @if($role === 'admin')
                                         <span class="badge text-bg-danger ms-2">admin</span>
                                     @elseif($role === 'agent')

@@ -2,6 +2,9 @@
 
 @php
     $role = request('role');
+    $isSuperAdmin = (auth()->user()->role ?? null) === 'super_admin';
+    $readOnly = $isSuperAdmin;
+    $allowCreate = !$readOnly || ($isSuperAdmin && $role === 'admin');
     $pageTitleText = 'Manajemen Pengguna';
     $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Manajemen Pengguna';
     $btnText = 'Tambah Pengguna';
@@ -11,13 +14,13 @@
         $pageTitleHtml = '<i class="fa-solid fa-user-shield me-2"></i>Manajemen Admin';
         $btnText = 'Tambah Admin';
     } elseif ($role === 'agent') {
-        $pageTitleText = 'Manajemen Operator';
-        $pageTitleHtml = '<i class="fa-solid fa-screwdriver-wrench me-2"></i>Manajemen Operator';
-        $btnText = 'Tambah Operator';
+        $pageTitleText = 'Daftar Agent';
+        $pageTitleHtml = '<i class="fa-solid fa-screwdriver-wrench me-2"></i>Daftar Agent';
+        $btnText = 'Tambah Agent';
     } elseif ($role === 'customer') {
-        $pageTitleText = 'Manajemen User';
-        $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Manajemen User';
-        $btnText = 'Tambah User';
+        $pageTitleText = 'Daftar Customer';
+        $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Daftar Customer';
+        $btnText = 'Tambah Customer';
     }
 @endphp
 
@@ -85,7 +88,9 @@
             <input id="user-search" type="text" class="form-control" placeholder="Cari nama / email..." autocomplete="off">
             <button class="btn btn-outline-secondary" type="button" id="user-search-clear" title="Clear">Clear</button>
         </div>
-        <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary">{{ $btnText }}</a>
+        @if($allowCreate)
+            <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary">{{ $btnText }}</a>
+        @endif
     </div>
 </div>
 
@@ -97,8 +102,13 @@
                     <th>No</th>
                     <th>Nama</th>
                     <th>Email</th>
+                    @if($role === 'admin')
+                        <th>Jobdesk</th>
+                    @endif
                     <th>Peran</th>
-                    <th class="text-end">Aksi</th>
+                    @if(!$readOnly)
+                        <th class="text-end">Aksi</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -117,13 +127,18 @@
                             </td>
                             <td>{{ $u->name }}</td>
                             <td>{{ $u->email }}</td>
+                            @if($role === 'admin')
+                                <td>{{ $u->category->name ?? '-' }}</td>
+                            @endif
                             <td><span class="badge text-bg-secondary">{{ $u->role }}</span></td>
-                        <td class="text-end">
-                            <div class="d-flex justify-content-end gap-2">
-                                <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">Ubah</a>
-                                <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.users.destroy', $u) }}?role={{ request('role') }}', '{{ $u->name }}')">Hapus</button>
-                            </div>
-                        </td>
+                            @if(!$readOnly)
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">Ubah</a>
+                                        <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.users.destroy', $u) }}?role={{ request('role') }}', '{{ $u->name }}')">Hapus</button>
+                                    </div>
+                                </td>
+                            @endif
                     </tr>
                 @endforeach
             </tbody>
