@@ -1,6 +1,6 @@
 @extends('layouts.bootstrap')
 
-@section('title', 'Cloud Ticketing System - Modern Customer Support')
+@section('title', 'CTM (Cloud Ticketing Manufacturing)')
 
 @section('no-navbar', '1')
 @section('no-footer', '1')
@@ -22,6 +22,35 @@
     .btn-modern:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
     .process-step { text-align: center; padding: 20px; }
     .process-number { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; margin: 0 auto 20px; }
+
+    .ctm-logo {
+        width: 220px;
+        height: 220px;
+        border-radius: 28px;
+        background: rgba(255,255,255,0.14);
+        border: 2px solid rgba(255,255,255,0.18);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        backdrop-filter: blur(6px);
+    }
+    .ctm-logo .mark {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        background: rgba(255,255,255,0.22);
+        border: 2px solid rgba(255,255,255,0.25);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        letter-spacing: 1px;
+        font-size: 34px;
+        line-height: 1;
+    }
+    .ctm-logo .name { margin-top: 12px; font-weight: 800; letter-spacing: .3px; font-size: 20px; }
+    .ctm-logo .tag { opacity: .9; font-size: 12px; }
 
     /* Responsive hero */
     @media (max-width: 992px) {
@@ -58,10 +87,10 @@
         <div class="row align-items-center justify-content-center">
             <div class="col-lg-6 col-md-8 mb-5 mb-lg-0" style="padding-left: 40px;">
                 <h1 style="font-size: 3.2rem; font-weight: 800; margin-bottom: 20px; line-height: 1.2;">
-                    Customer Support<br>Jadi Lebih <span style="color: #fbbf24;">Mudah</span>
+                    CTM<br><span style="color: #fbbf24;">Cloud Ticketing Manufacturing</span>
                 </h1>
                 <p style="font-size: 1.15rem; margin-bottom: 28px; opacity: 0.95; line-height: 1.8;">
-                    Platform modern untuk mengelola tiket layanan pelanggan. Real-time, efisien, dan mudah digunakan.
+                    Platform ticketing untuk kebutuhan manufacturing: cepat, terstruktur, dan mudah dipantau.
                 </p>
                 <div class="d-flex flex-wrap gap-3">
                     @guest
@@ -80,7 +109,11 @@
             </div>
             <div class="col-lg-6">
                 <div class="text-center">
-                    <div style="font-size: 13rem; opacity: 0.9;"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="ctm-logo">
+                        <div class="mark">CTM</div>
+                        <div class="name">CTM</div>
+                        <div class="tag">Cloud Ticketing Manufacturing</div>
+                    </div>
                 </div>
             </div>
         </div>

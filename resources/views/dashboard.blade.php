@@ -8,7 +8,9 @@
 
 @section('content')
 {{-- DASHBOARD HEADER --}}
-@php($role = auth()->user()->role ?? 'customer')
+@php
+    $role = auth()->user()->role ?? 'customer';
+@endphp
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
@@ -187,6 +189,43 @@
                         </a>
                     </div>
 
+                    <hr class="my-4">
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Jumlah Status Semua Ticket</h6>
+                                    <canvas id="adminTicketStatusChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket</h6>
+                                    <canvas id="adminTicketPriorityChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Semua Status Teknisi</h6>
+                                    <canvas id="adminTechnicianStatusChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Semua Level Teknisi</h6>
+                                    <canvas id="adminTechnicianLevelChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 @elseif($role === 'super_admin')
                     <h5 class="card-title"><i class="fa-solid fa-crown me-2"></i>Super Admin Dashboard</h5>
 
@@ -261,6 +300,121 @@
     </div>
 </div>
 @endif
+@endsection
+
+@section('scripts')
+    @if(($role ?? 'customer') === 'admin')
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                const statusLabels = @json(($adminTicketStatusLabels ?? collect())->values());
+                const statusValues = @json(($adminTicketStatusValues ?? collect())->values());
+                const prioLabels = @json(($adminTicketPriorityLabels ?? collect())->values());
+                const prioValues = @json(($adminTicketPriorityValues ?? collect())->values());
+                const techStatusLabels = @json(($adminTechnicianStatusLabels ?? collect())->values());
+                const techStatusValues = @json(($adminTechnicianStatusValues ?? collect())->values());
+                const techLevelLabels = @json(($adminTechnicianLevelLabels ?? collect())->values());
+                const techLevelValues = @json(($adminTechnicianLevelValues ?? collect())->values());
+
+                const el1 = document.getElementById('adminTicketStatusChart');
+                if (el1) {
+                    new Chart(el1, {
+                        type: 'bar',
+                        data: {
+                            labels: statusLabels,
+                            datasets: [{
+                                label: 'Tickets',
+                                data: statusValues,
+                                backgroundColor: 'rgba(37, 99, 235, 0.25)',
+                                borderColor: 'rgba(37, 99, 235, 0.9)',
+                                borderWidth: 1,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                        }
+                    });
+                }
+
+                const el2 = document.getElementById('adminTicketPriorityChart');
+                if (el2) {
+                    new Chart(el2, {
+                        type: 'line',
+                        data: {
+                            labels: prioLabels,
+                            datasets: [{
+                                label: 'Tickets',
+                                data: prioValues,
+                                borderColor: 'rgba(245, 158, 11, 0.95)',
+                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                tension: 0.25,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                        }
+                    });
+                }
+
+                const el3 = document.getElementById('adminTechnicianStatusChart');
+                if (el3) {
+                    new Chart(el3, {
+                        type: 'doughnut',
+                        data: {
+                            labels: techStatusLabels,
+                            datasets: [{
+                                data: techStatusValues,
+                                backgroundColor: [
+                                    'rgba(107, 114, 128, 0.35)',
+                                    'rgba(245, 158, 11, 0.35)',
+                                    'rgba(249, 115, 22, 0.35)',
+                                    'rgba(22, 163, 74, 0.35)'
+                                ],
+                                borderColor: [
+                                    'rgba(107, 114, 128, 0.95)',
+                                    'rgba(245, 158, 11, 0.95)',
+                                    'rgba(249, 115, 22, 0.95)',
+                                    'rgba(22, 163, 74, 0.95)'
+                                ],
+                                borderWidth: 1,
+                            }]
+                        },
+                        options: { responsive: true }
+                    });
+                }
+
+                const el4 = document.getElementById('adminTechnicianLevelChart');
+                if (el4) {
+                    new Chart(el4, {
+                        type: 'pie',
+                        data: {
+                            labels: techLevelLabels,
+                            datasets: [{
+                                data: techLevelValues,
+                                backgroundColor: [
+                                    'rgba(59, 130, 246, 0.35)',
+                                    'rgba(245, 158, 11, 0.35)',
+                                    'rgba(22, 163, 74, 0.35)'
+                                ],
+                                borderColor: [
+                                    'rgba(59, 130, 246, 0.95)',
+                                    'rgba(245, 158, 11, 0.95)',
+                                    'rgba(22, 163, 74, 0.95)'
+                                ],
+                                borderWidth: 1,
+                            }]
+                        },
+                        options: { responsive: true }
+                    });
+                }
+            })();
+        </script>
+    @endif
 @endsection
 
 @section('scripts')

@@ -37,7 +37,7 @@ class TicketController extends Controller
      * - Agent: Lihat tickets yang DI-ASSIGN ke dia saja (assigned_agent_id = user->id)
      * - Customer: Lihat tickets MEREKA saja
      */
-    public function index()
+    public function index(Request $request)
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -65,7 +65,29 @@ class TicketController extends Controller
             $tickets = $this->ticketService->getTicketsByCustomer($user->id);
         }
 
-        return view('tickets.index', compact('tickets'));
+        // Optional filtering/search (mainly requested for Customer)
+        $statusFilter = strtolower(trim((string) $request->query('status', '')));
+        $search = strtolower(trim((string) $request->query('q', '')));
+
+        if (is_array($tickets) && (strlen($statusFilter) > 0 || strlen($search) > 0)) {
+            $tickets = array_values(array_filter($tickets, function ($t) use ($statusFilter, $search) {
+                $st = strtolower((string) ($t['status'] ?? ''));
+                if ($statusFilter !== '' && $st !== $statusFilter) {
+                    return false;
+                }
+
+                if ($search === '') {
+                    return true;
+                }
+
+                $hay = strtolower(
+                    (string) (($t['title'] ?? '') . ' ' . ($t['category'] ?? '') . ' ' . ($t['customer_name'] ?? '') . ' ' . ($t['agent_name'] ?? '') . ' ' . ($t['location'] ?? ''))
+                );
+                return str_contains($hay, $search);
+            }));
+        }
+
+        return view('tickets.index', compact('tickets', 'statusFilter', 'search'));
     }
 
     /**
@@ -220,11 +242,11 @@ class TicketController extends Controller
                 'closed' => 'Closed',
             ];
             $colors = [
-                'open' => 'secondary',
+                'open' => 'primary',
                 'assigned' => 'info',
                 'in_progress' => 'warning',
                 'resolved' => 'success',
-                'closed' => 'dark',
+                'closed' => 'danger',
             ];
 
             foreach ($agents as $a) {
@@ -362,6 +384,7 @@ class TicketController extends Controller
     public function assignAgent(Request $request, string $id)
     {
         // Prevent re-assigning / reverting status once ticket is already finished
+        $ticket = null;
         try {
             $ticket = $this->ticketService->getTicket($id);
             $cur = $ticket['status'] ?? null;
@@ -402,12 +425,20 @@ class TicketController extends Controller
 
         // Admin hanya boleh assign ticket sesuai kategori/jobdesk dan agent sesuai kategori
         if ($user->role === 'admin') {
-            $ticket = $this->ticketService->getTicket($id);
+            if (!is_array($ticket)) {
+                $ticket = $this->ticketService->getTicket($id);
+            }
             if (!$user->category_id || (int) ($ticket['category_id'] ?? 0) !== (int) $user->category_id) {
                 return back()->with('error', 'Ticket ini bukan jobdesk Anda.');
             }
             if ((int) ($agent->category_id ?? 0) !== (int) $user->category_id) {
                 return back()->with('error', 'Teknisi tidak sesuai jobdesk/kategori Anda.');
+            }
+
+            // Perombakan: setelah admin menugaskan teknisi pertama, tidak boleh diganti teknisi lain
+            $currentAgentId = (int) ($ticket['agent_id'] ?? 0);
+            if ($currentAgentId > 0 && $currentAgentId !== (int) $agent->id) {
+                return back()->with('error', 'Teknisi sudah ditugaskan dan tidak dapat diganti.');
             }
         }
 
@@ -418,7 +449,22 @@ class TicketController extends Controller
             'status' => 'assigned',
         ]);
 
-        return back()->with('success', "Ticket berhasil ditugaskan ke {$agent->name}");
+        $ticketTitle = null;
+        try {
+            $t = $this->ticketService->getTicket($id);
+            $ticketTitle = is_array($t) ? ($t['title'] ?? null) : null;
+        } catch (\Throwable $e) {
+            $ticketTitle = null;
+        }
+
+        return back()
+            ->with('success', "Ticket berhasil ditugaskan ke {$agent->name}")
+            ->with('floating_notification', [
+                'type' => 'info',
+                'sound' => 'status',
+                'title' => $ticketTitle ?: 'Ticket',
+                'message' => "Ditugaskan ke {$agent->name}",
+            ]);
     }
 
     public function updateStatus(Request $request, string $id)
@@ -527,7 +573,22 @@ class TicketController extends Controller
             'status' => $request->status,
         ]);
 
-        return back()->with('success', 'Status ticket berhasil diperbarui');
+        $ticketTitle = null;
+        try {
+            $t = $this->ticketService->getTicket($id);
+            $ticketTitle = is_array($t) ? ($t['title'] ?? null) : null;
+        } catch (\Throwable $e) {
+            $ticketTitle = null;
+        }
+
+        return back()
+            ->with('success', 'Status ticket berhasil diperbarui')
+            ->with('floating_notification', [
+                'type' => 'success',
+                'sound' => 'status',
+                'title' => $ticketTitle ?: 'Ticket',
+                'message' => 'Status berubah menjadi ' . str_replace('_', ' ', (string) $request->status),
+            ]);
     }
 
     public function customerClose(Request $request, string $id)
@@ -580,7 +641,16 @@ class TicketController extends Controller
             }
         }
 
-        return back()->with('success', 'Ticket berhasil ditutup (Closed)');
+        $ticketTitle = $ticket['title'] ?? null;
+
+        return back()
+            ->with('success', 'Ticket berhasil ditutup (Closed)')
+            ->with('floating_notification', [
+                'type' => 'warning',
+                'sound' => 'status',
+                'title' => $ticketTitle ?: 'Ticket',
+                'message' => 'Ticket ditutup (Closed)',
+            ]);
     }
 
     public function downloadAttachment(Request $request, string $ticketId, string $path)

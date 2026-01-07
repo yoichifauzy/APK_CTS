@@ -120,8 +120,12 @@ Route::get('/dashboard', function () {
         $stats['closed'] = (clone $base)->where('status', 'closed')->count();
         $stats['total'] = (clone $base)->count();
 
-        // Statistik khusus admin: tickets yang belum di-assign (di kategori dia)
-        $stats['unassigned'] = (clone $base)->whereNull('agent_id')->count();
+        // Statistik khusus admin: tickets yang belum di-assign (Open saja)
+        // (Di sistem ini, ticket Open semestinya belum memiliki agent)
+        $stats['unassigned'] = (clone $base)
+            ->where('status', 'open')
+            ->whereNull('agent_id')
+            ->count();
     } elseif ($role === 'agent') {
         // AGENT: Hanya lihat tickets yang DI-ASSIGN ke dia
         // Exclude tickets yang sudah resolved atau closed (sudah selesai dikerjakan)
@@ -143,6 +147,111 @@ Route::get('/dashboard', function () {
         $stats['resolved'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'resolved')->count();
         $stats['closed'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'closed')->count();
         $stats['total'] = \App\Models\Ticket::where('customer_id', $user->id)->count();
+    }
+
+    // =========================
+    // Admin Charts (Jobdesk)
+    // =========================
+    $adminTicketStatusLabels = collect();
+    $adminTicketStatusValues = collect();
+    $adminTicketPriorityLabels = collect();
+    $adminTicketPriorityValues = collect();
+    $adminTechnicianStatusLabels = collect();
+    $adminTechnicianStatusValues = collect();
+    $adminTechnicianLevelLabels = collect();
+    $adminTechnicianLevelValues = collect();
+
+    if ($role === 'admin') {
+        $baseTickets = \App\Models\Ticket::query();
+        if ($user->category_id) {
+            $baseTickets->where('category_id', $user->category_id);
+        } else {
+            $baseTickets->whereRaw('1 = 0');
+        }
+
+        // 1) Bar: ticket status counts
+        $adminTicketStatusLabels = collect(['open', 'assigned', 'in_progress', 'resolved', 'closed']);
+        $adminTicketStatusValues = collect([
+            (int) ($stats['open'] ?? 0),
+            (int) ($stats['assigned'] ?? 0),
+            (int) ($stats['in_progress'] ?? 0),
+            (int) ($stats['resolved'] ?? 0),
+            (int) ($stats['closed'] ?? 0),
+        ]);
+
+        // 2) Line: ticket priority counts (scoped)
+        $prioRows = (clone $baseTickets)
+            ->whereNotNull('priority')
+            ->select('priority', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
+            ->groupBy('priority')
+            ->get();
+        $prioMap = $prioRows->pluck('total', 'priority')->map(fn($v) => (int) $v);
+        $priorityOrder = ['low', 'medium', 'high'];
+        $adminTicketPriorityLabels = collect($priorityOrder);
+        $adminTicketPriorityValues = collect(array_map(fn($p) => (int) ($prioMap[$p] ?? 0), $priorityOrder));
+
+        // 3) Donut: technician workload status (idle / assigned / in_progress / resolved)
+        $agents = \App\Models\User::query()
+            ->where('role', 'agent')
+            ->when($user->category_id, fn($q) => $q->where('category_id', $user->category_id))
+            ->select('id')
+            ->get();
+        $agentIds = $agents->pluck('id')->values();
+
+        $statusCounts = [
+            'idle' => 0,
+            'assigned' => 0,
+            'in_progress' => 0,
+            'resolved' => 0,
+        ];
+
+        if ($agentIds->isEmpty()) {
+            // keep zeros
+        } else {
+            $latestByAgent = [];
+            $rows = \App\Models\Ticket::query()
+                ->whereIn('agent_id', $agentIds)
+                ->whereNotNull('agent_id')
+                ->whereIn('status', ['assigned', 'in_progress', 'resolved'])
+                ->orderByDesc('updated_at')
+                ->select(['agent_id', 'status', 'updated_at'])
+                ->get();
+
+            foreach ($rows as $row) {
+                $aid = (int) $row->agent_id;
+                if (!isset($latestByAgent[$aid])) {
+                    $latestByAgent[$aid] = (string) $row->status;
+                }
+            }
+
+            foreach ($agentIds as $aid) {
+                $st = $latestByAgent[(int) $aid] ?? 'idle';
+                if (!isset($statusCounts[$st])) {
+                    $statusCounts[$st] = 0;
+                }
+                $statusCounts[$st]++;
+            }
+        }
+
+        $adminTechnicianStatusLabels = collect(['idle', 'assigned', 'in_progress', 'resolved']);
+        $adminTechnicianStatusValues = collect([
+            (int) ($statusCounts['idle'] ?? 0),
+            (int) ($statusCounts['assigned'] ?? 0),
+            (int) ($statusCounts['in_progress'] ?? 0),
+            (int) ($statusCounts['resolved'] ?? 0),
+        ]);
+
+        // 4) Pie: technician level counts (junior/intermediate/expert)
+        $levelRows = \App\Models\User::query()
+            ->where('role', 'agent')
+            ->when($user->category_id, fn($q) => $q->where('category_id', $user->category_id))
+            ->selectRaw("COALESCE(availability_status, 'junior') as level, COUNT(*) as total")
+            ->groupBy('level')
+            ->get();
+        $levelMap = $levelRows->pluck('total', 'level')->map(fn($v) => (int) $v);
+        $levelOrder = ['junior', 'intermediate', 'expert'];
+        $adminTechnicianLevelLabels = collect($levelOrder);
+        $adminTechnicianLevelValues = collect(array_map(fn($l) => (int) ($levelMap[$l] ?? 0), $levelOrder));
     }
 
     // Grafik: jumlah user per role
@@ -213,6 +322,53 @@ Route::get('/dashboard', function () {
     $categoryLabels = $topCategories->pluck('category')->values();
     $categoryValues = $topCategories->pluck('total')->map(fn($v) => (int) $v)->values();
 
+    // =============================================================
+    // Floating notification: new incoming tickets (admin/agent)
+    // =============================================================
+    if (in_array($role, ['admin', 'agent'], true)) {
+        $sessionKey = 'dashboard_last_seen_at:' . $role . ':' . ((int) ($user->id ?? 0));
+        $lastSeenRaw = session($sessionKey);
+
+        try {
+            $since = $lastSeenRaw ? \Illuminate\Support\Carbon::parse($lastSeenRaw) : \Illuminate\Support\Carbon::now()->startOfDay();
+        } catch (\Throwable $e) {
+            $since = \Illuminate\Support\Carbon::now()->startOfDay();
+        }
+
+        $newCount = 0;
+        if ($role === 'admin') {
+            $q = \App\Models\Ticket::query();
+            if ($user->category_id) {
+                $q->where('category_id', $user->category_id);
+            } else {
+                $q->whereRaw('1 = 0');
+            }
+            // Admin notification: hanya tiket Open yang belum ditugaskan
+            $newCount = (int) $q
+                ->where('status', 'open')
+                ->whereNull('agent_id')
+                ->where('created_at', '>', $since)
+                ->count();
+        } elseif ($role === 'agent') {
+            // For agent, treat newly assigned/updated tickets as "new"
+            $newCount = (int) \App\Models\Ticket::query()
+                ->where('agent_id', $user->id)
+                ->whereIn('status', ['assigned', 'in_progress'])
+                ->where('updated_at', '>', $since)
+                ->count();
+        }
+
+        session([$sessionKey => \Illuminate\Support\Carbon::now()->toISOString()]);
+
+        if ($newCount > 0) {
+            session()->flash('floating_notification', [
+                'type' => 'info',
+                'title' => 'Tiket Baru',
+                'message' => 'Ada ' . $newCount . ' tiket masuk',
+            ]);
+        }
+    }
+
     return view('dashboard', compact(
         'stats',
         'userCounts',
@@ -223,7 +379,15 @@ Route::get('/dashboard', function () {
         'adminJobdeskLabels',
         'adminJobdeskValues',
         'agentJobdeskLabels',
-        'agentJobdeskValues'
+        'agentJobdeskValues',
+        'adminTicketStatusLabels',
+        'adminTicketStatusValues',
+        'adminTicketPriorityLabels',
+        'adminTicketPriorityValues',
+        'adminTechnicianStatusLabels',
+        'adminTechnicianStatusValues',
+        'adminTechnicianLevelLabels',
+        'adminTechnicianLevelValues'
     ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -364,6 +528,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/technicians/{user}/edit', [\App\Http\Controllers\Admin\TechnicianController::class, 'edit'])->name('admin.technicians.edit');
     Route::put('/admin/technicians/{user}', [\App\Http\Controllers\Admin\TechnicianController::class, 'update'])->name('admin.technicians.update');
     Route::delete('/admin/technicians/{user}', [\App\Http\Controllers\Admin\TechnicianController::class, 'destroy'])->name('admin.technicians.destroy');
+
+    // Laporan (Jobdesk)
+    Route::get('/admin/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('admin.reports.index');
+    Route::get('/admin/reports/export/csv', [\App\Http\Controllers\Admin\ReportController::class, 'exportCsv'])->name('admin.reports.exportCsv');
+    Route::get('/admin/reports/export/pdf', [\App\Http\Controllers\Admin\ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
+    Route::get('/admin/reports/print', [\App\Http\Controllers\Admin\ReportController::class, 'print'])->name('admin.reports.print');
 });
 
 // =================================================================
@@ -466,6 +636,13 @@ Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
     Route::get('/tickets/{ticket}/barcode/download', [TicketBarcodeController::class, 'download'])->name('tickets.barcode.download');
     Route::get('/barcode/data/{ticket}', [TicketBarcodeController::class, 'data'])->name('barcode.data');
 });
+
+// =================================================================
+// NOTIFICATION POLL - for real-time-ish updates (no refresh)
+// =================================================================
+Route::get('/notifications/poll', [\App\Http\Controllers\NotificationController::class, 'poll'])
+    ->middleware(['auth', 'role:customer,admin,agent,super_admin'])
+    ->name('notifications.poll');
 
 Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
     Route::get('/diskusi', [TicketDiscussionController::class, 'index'])->name('discussions.index');

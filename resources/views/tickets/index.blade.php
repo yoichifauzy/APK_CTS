@@ -54,6 +54,16 @@
         }
     }
 </style>
+
+<style>
+    .row-status-open > td, .row-status-open > th { background-color: rgba(var(--bs-primary-rgb), 0.06); }
+    .row-status-assigned > td, .row-status-assigned > th { background-color: rgba(var(--bs-info-rgb), 0.08); }
+    .row-status-in_progress > td, .row-status-in_progress > th { background-color: rgba(var(--bs-warning-rgb), 0.10); }
+    .row-status-resolved > td, .row-status-resolved > th { background-color: rgba(var(--bs-success-rgb), 0.06); }
+    .row-status-closed > td, .row-status-closed > th { background-color: rgba(var(--bs-danger-rgb), 0.06); }
+
+    .ticket-panel-header { background: var(--bs-primary-bg-subtle); }
+</style>
 <?php use Carbon\Carbon; ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
@@ -71,26 +81,36 @@
     @endif
 </div>
 
-@if(auth()->user()->role === 'admin' || auth()->user()->role === 'agent')
-<div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
-    <input type="text" id="search-ticket" class="form-control" placeholder="Cari tiket..." style="flex: 1; min-width: 200px;">
-    <select id="filter-status" class="form-select" style="flex: 0 0 auto; min-width: 180px;">
+<form class="d-flex gap-2 mb-3 align-items-center flex-wrap" method="GET" action="{{ route('tickets.index') }}">
+    <input type="text" id="search-ticket" name="q" class="form-control" placeholder="Cari tiket..." value="{{ $search ?? request('q') }}" style="flex: 1; min-width: 200px;">
+    <select id="filter-status" name="status" class="form-select" style="flex: 0 0 auto; min-width: 180px;">
         <option value="">Semua Status</option>
-        @if(auth()->user()->role === 'admin')
-            <option value="open">Open</option>
-            <option value="assigned">Assigned</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-        @else
-            <option value="assigned">Assigned</option>
-            <option value="in_progress">In Progress</option>
+        @if(in_array(auth()->user()->role, ['admin','customer','super_admin'], true))
+            <option value="open" @selected(($statusFilter ?? request('status'))==='open')>Open</option>
+            <option value="assigned" @selected(($statusFilter ?? request('status'))==='assigned')>Assigned</option>
+            <option value="in_progress" @selected(($statusFilter ?? request('status'))==='in_progress')>In Progress</option>
+            <option value="resolved" @selected(($statusFilter ?? request('status'))==='resolved')>Resolved</option>
+            <option value="closed" @selected(($statusFilter ?? request('status'))==='closed')>Closed</option>
+        @elseif(auth()->user()->role === 'agent')
+            <option value="assigned" @selected(($statusFilter ?? request('status'))==='assigned')>Assigned</option>
+            <option value="in_progress" @selected(($statusFilter ?? request('status'))==='in_progress')>In Progress</option>
+            <option value="resolved" @selected(($statusFilter ?? request('status'))==='resolved')>Resolved</option>
+            <option value="closed" @selected(($statusFilter ?? request('status'))==='closed')>Closed</option>
         @endif
     </select>
-</div>
-@endif
+    <button type="submit" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-magnifying-glass"></i>
+    </button>
+    <a href="{{ route('tickets.index') }}" class="btn btn-outline-secondary">Reset</a>
+</form>
 
 <div class="card">
+    @if(in_array(auth()->user()->role, ['admin','agent'], true))
+        <div class="card-header ticket-panel-header">
+            <div class="fw-semibold">Panel Tiket</div>
+            <div class="small text-muted">Status warna mengikuti aturan terbaru</div>
+        </div>
+    @endif
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -98,6 +118,9 @@
                     <th style="width: 60px;">No</th>
                     <th>Judul</th>
                     <th>Kategori</th>
+                    @if(in_array(auth()->user()->role, ['admin','agent'], true))
+                        <th>Lokasi</th>
+                    @endif
                     <th>Prioritas</th>
                     <th>Status</th>
                     @if(auth()->user()->role === 'admin')
@@ -110,11 +133,13 @@
             <tbody>
                 @php
                     $statusColors = [
-                        'open' => 'secondary',
+                        // Requested mapping:
+                        // Open = Biru, Assigned = Cyan, In Progress = Kuning, Resolved = Hijau, Close = Merah
+                        'open' => 'primary',
                         'assigned' => 'info',
                         'in_progress' => 'warning',
                         'resolved' => 'success',
-                        'closed' => 'dark',
+                        'closed' => 'danger',
                     ];
                     $priorityColors = [
                         'low' => 'success',
@@ -123,7 +148,11 @@
                     ];
                 @endphp
                 @forelse($tickets as $t)
-                    <tr class="ticket-row" data-status="{{ $t['status'] ?? 'open' }}" data-title="{{ strtolower($t['title'] ?? '') }}" data-category="{{ strtolower($t['category'] ?? '') }}" data-customer="{{ strtolower($t['customer_name'] ?? '') }}">
+                    @php
+                        $stat = $t['status'] ?? 'open';
+                        $rowStatusClass = 'row-status-' . $stat;
+                    @endphp
+                    <tr class="ticket-row {{ $rowStatusClass }}" data-status="{{ $stat }}" data-title="{{ strtolower($t['title'] ?? '') }}" data-category="{{ strtolower($t['category'] ?? '') }}" data-customer="{{ strtolower($t['customer_name'] ?? '') }}">
                         <td>
                             @if(is_object($tickets) && method_exists($tickets, 'currentPage'))
                                 {{ ($tickets->currentPage() - 1) * $tickets->perPage() + $loop->iteration }}
@@ -138,6 +167,9 @@
                             @endif
                         </td>
                         <td><small>{{ $t['category'] ?? '-' }}</small></td>
+                        @if(in_array(auth()->user()->role, ['admin','agent'], true))
+                            <td><small>{{ $t['location'] ?? '-' }}</small></td>
+                        @endif
                         <td>
                             @php
                                 $prio = $t['priority'] ?? '-';
@@ -172,6 +204,15 @@
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" href="{{ route('tickets.show', $t['id']) }}">Buka</a>
                             @if(auth()->user()->role === 'customer')
+                                @if(($stat ?? 'open') !== 'closed')
+                                    <button type="button" class="btn btn-sm btn-dark btn-close-ticket" data-id="{{ $t['id'] }}" data-status="{{ $stat }}">
+                                        Close
+                                    </button>
+                                    <form id="close-form-{{ $t['id'] }}" action="{{ route('tickets.customerClose', $t['id']) }}" method="POST" style="display:none;">
+                                        @csrf
+                                        <input type="hidden" name="note" id="close-note-{{ $t['id'] }}" value="">
+                                    </form>
+                                @endif
                                 <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-ticket" data-id="{{ $t['id'] }}" data-status="{{ $stat }}">Edit</button>
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-delete-ticket" data-id="{{ $t['id'] }}" data-status="{{ $stat }}">Hapus</button>
                                 <form id="delete-form-{{ $t['id'] }}" action="{{ route('tickets.destroy', $t['id']) }}" method="POST" style="display:none;">
@@ -189,7 +230,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ auth()->user()->role === 'admin' ? 7 : 6 }}" class="text-center py-5">
+                        <td colspan="{{ auth()->user()->role === 'admin' ? 9 : (in_array(auth()->user()->role, ['admin','agent'], true) ? 8 : 7) }}" class="text-center py-5">
                             <div class="text-muted">Tidak ada tiket</div>
                         </td>
                     </tr>
@@ -205,6 +246,51 @@
     document.addEventListener('click', function (e) {
         const el = e.target;
         if (!el.classList) return;
+
+        if (el.classList.contains('btn-close-ticket')) {
+            const id = el.getAttribute('data-id');
+            const status = (el.getAttribute('data-status') || 'open').toString();
+            const form = document.getElementById('close-form-' + id);
+            const noteEl = document.getElementById('close-note-' + id);
+            if (!form || !noteEl) return;
+
+            if (status === 'resolved') {
+                noteEl.value = '';
+                form.submit();
+                return;
+            }
+
+            if (['open', 'assigned', 'in_progress'].includes(status)) {
+                Swal.fire({
+                    title: 'Tutup Ticket?',
+                    html: 'Wajib isi catatan alasan menutup ticket.',
+                    icon: 'warning',
+                    input: 'textarea',
+                    inputPlaceholder: 'Tuliskan alasan menutup ticket...',
+                    inputAttributes: { maxlength: 2000 },
+                    inputValidator: (value) => {
+                        if (!value || !value.trim()) return 'Catatan wajib diisi.';
+                        return null;
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Close',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true
+                }).then((res) => {
+                    if (res.isConfirmed){
+                        noteEl.value = (res.value || '').toString().trim();
+                        form.submit();
+                    }
+                });
+                return;
+            }
+
+            // fallback: no note required
+            noteEl.value = '';
+            form.submit();
+            return;
+        }
+
         if (el.classList.contains('btn-edit-ticket')) {
             const id = el.getAttribute('data-id');
             const status = el.getAttribute('data-status');
@@ -279,8 +365,7 @@
         }
     });
 
-    // Filter dan Search untuk Admin
-    @if(auth()->user()->role === 'admin')
+    // Filter dan Search (client-side) untuk semua role
     const filterStatus = document.getElementById('filter-status');
     const searchInput = document.getElementById('search-ticket');
     const ticketRows = document.querySelectorAll('.ticket-row');
@@ -323,6 +408,5 @@
     if (searchInput) {
         searchInput.addEventListener('input', filterTickets);
     }
-    @endif
 </script>
 @endsection

@@ -28,10 +28,34 @@
 </style>
 
 <div class="container-fluid">
+    @php
+        $statusColors = [
+            'open' => 'primary',
+            'assigned' => 'info',
+            'in_progress' => 'warning',
+            'resolved' => 'success',
+            'closed' => 'danger',
+        ];
+        $priorityColors = [
+            'low' => 'success',
+            'medium' => 'warning',
+            'high' => 'danger',
+        ];
+        $stat = (string) ($ticket['status'] ?? '');
+        $prio = (string) ($ticket['priority'] ?? '');
+    @endphp
     <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
         <div>
             <h1 class="h5 mb-1">{{ $ticket['title'] ?? 'Ticket' }}</h1>
             <div class="text-muted">ID: {{ $ticket['id'] ?? '-' }}</div>
+            <div class="mt-2 d-flex flex-wrap gap-2">
+                <span class="badge text-bg-{{ $statusColors[$stat] ?? 'secondary' }}">
+                    {{ $stat !== '' ? ucfirst(str_replace('_',' ', $stat)) : '-' }}
+                </span>
+                <span class="badge text-bg-{{ $priorityColors[$prio] ?? 'secondary' }}">
+                    {{ $prio !== '' ? strtoupper(substr($prio, 0, 1)) : '-' }}
+                </span>
+            </div>
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary btn-sm" href="{{ route('discussions.index') }}">Kembali</a>
@@ -120,7 +144,7 @@
             @endif
 
             <div class="border-top pt-3">
-                <form method="POST" action="{{ route('tickets.comments.store', $ticket['id']) }}">
+                <form method="POST" enctype="multipart/form-data" action="{{ route('tickets.comments.store', $ticket['id']) }}">
                     @csrf
                     <input type="hidden" name="redirect_to" value="{{ route('discussions.show', $ticket['id'], false) }}">
                     <div class="mb-2">
@@ -133,12 +157,46 @@
                             <i class="fa-solid fa-lightbulb me-2"></i>Tips: Jelaskan progress, kendala, atau pertanyaan
                         </div>
                     </div>
-                    <button class="btn btn-primary" type="submit">
-                        <i class="fa-solid fa-paper-plane me-2"></i>Kirim Komentar
-                    </button>
+                    <input id="comment-attachments" type="file" name="attachments[]" multiple style="display:none;">
+                    <div class="d-flex gap-2 align-items-center">
+                        <button class="btn btn-outline-secondary" type="button" id="btn-pick-attachments" title="Lampirkan file">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </button>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fa-solid fa-paper-plane me-2"></i>Kirim Komentar
+                        </button>
+                        <span class="text-muted small" id="attachment-hint" style="display:none;"></span>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    (function(){
+        const btn = document.getElementById('btn-pick-attachments');
+        const input = document.getElementById('comment-attachments');
+        const hint = document.getElementById('attachment-hint');
+        if (!btn || !input) return;
+
+        btn.addEventListener('click', function(){
+            input.click();
+        });
+
+        input.addEventListener('change', function(){
+            if (!hint) return;
+            const files = Array.from(input.files || []);
+            if (files.length === 0) {
+                hint.style.display = 'none';
+                hint.textContent = '';
+                return;
+            }
+            hint.style.display = '';
+            hint.textContent = files.length + ' file dipilih';
+        });
+    })();
+</script>
 @endsection

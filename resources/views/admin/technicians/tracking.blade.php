@@ -14,22 +14,49 @@
     </div>
 
     @php
-        $flow = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
+        $flow = ['open', 'assigned', 'in_progress', 'resolved'];
         $labels = [
             'open' => 'Open',
             'assigned' => 'Assigned',
             'in_progress' => 'In Progress',
             'resolved' => 'Resolved',
-            'closed' => 'Closed',
         ];
         $colors = [
-            'open' => 'secondary',
+            'open' => 'primary',
             'assigned' => 'info',
             'in_progress' => 'warning',
             'resolved' => 'success',
-            'closed' => 'dark',
         ];
     @endphp
+
+    <form class="row g-2 mb-3" method="GET" action="{{ route('admin.technicians.tracking') }}">
+        <div class="col-md-5">
+            <input class="form-control" type="text" name="q" placeholder="Search nama/email teknisi..." value="{{ $q ?? '' }}">
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" name="level">
+                <option value="">Semua Level</option>
+                <option value="junior" @selected(($level ?? '')==='junior')>Junior</option>
+                <option value="intermediate" @selected(($level ?? '')==='intermediate')>Intermediate</option>
+                <option value="expert" @selected(($level ?? '')==='expert')>Expert</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" name="status">
+                <option value="">Semua Status</option>
+                <option value="open" @selected(($status ?? '')==='open')>Open</option>
+                <option value="assigned" @selected(($status ?? '')==='assigned')>Assigned</option>
+                <option value="in_progress" @selected(($status ?? '')==='in_progress')>In Progress</option>
+                <option value="resolved" @selected(($status ?? '')==='resolved')>Resolved</option>
+            </select>
+        </div>
+        <div class="col-md-1 d-flex gap-2">
+            <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+        <div class="col-12">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ route('admin.technicians.tracking') }}">Reset</a>
+        </div>
+    </form>
 
     <div class="card">
         <div class="table-responsive">

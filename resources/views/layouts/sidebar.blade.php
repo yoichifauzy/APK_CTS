@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', config('app.name', 'Cloud Ticketing'))</title>
+    <title>@yield('title', config('app.name', 'CTM'))</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -507,8 +507,8 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h4><i class="fa-solid fa-cloud me-2"></i>CloudTicket</h4>
-            <p>Support System</p>
+            <h4><i class="fa-solid fa-cloud me-2"></i>CTM</h4>
+            <p>Cloud Ticketing Manufacturing</p>
         </div>
 
         <ul class="sidebar-nav">
@@ -601,7 +601,7 @@
 
                 @if(auth()->user()->role === 'admin')
                     <li class="sidebar-divider">
-                        <a href="{{ route('admin.technicians.index') }}" class="nav-link {{ request()->routeIs('admin.technicians.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.technicians.index') }}" class="nav-link {{ (request()->routeIs('admin.technicians.index') || request()->routeIs('admin.technicians.create') || request()->routeIs('admin.technicians.edit') || request()->routeIs('admin.technicians.store') || request()->routeIs('admin.technicians.update') || request()->routeIs('admin.technicians.destroy')) ? 'active' : '' }}">
                             <i class="fa-solid fa-user-gear"></i>
                             <span>Kelola Teknisi</span>
                         </a>
@@ -610,6 +610,12 @@
                         <a href="{{ route('admin.technicians.tracking') }}" class="nav-link {{ request()->routeIs('admin.technicians.tracking') ? 'active' : '' }}">
                             <i class="fa-solid fa-chart-line"></i>
                             <span>Tracking Teknisi</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.reports.index') }}" class="nav-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Laporan</span>
                         </a>
                     </li>
                 @endif
@@ -755,6 +761,248 @@
             });
         @endif
     </script>
+
+    @php
+        $fn = session('floating_notification');
+        $fnType = is_array($fn) ? ($fn['type'] ?? 'info') : 'info';
+        $fnTitle = is_array($fn) ? ($fn['title'] ?? null) : null;
+        $fnMessage = is_array($fn) ? ($fn['message'] ?? null) : null;
+        $fnSound = is_array($fn) ? ($fn['sound'] ?? null) : null;
+
+        $toastBg = match ($fnType) {
+            'success' => 'success',
+            'danger', 'error' => 'danger',
+            'warning' => 'warning',
+            default => 'info',
+        };
+    @endphp
+
+    <audio id="notifSoundNew" preload="auto" src="{{ \Illuminate\Support\Facades\Vite::asset('resources/music/message1.mp3') }}"></audio>
+    <audio id="notifSoundStatus" preload="auto" src="{{ \Illuminate\Support\Facades\Vite::asset('resources/music/message2.mp3') }}"></audio>
+
+    @if(!empty($fnTitle) || !empty($fnMessage))
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2000;">
+            <div id="floatingToast" class="toast align-items-center text-bg-{{ $toastBg }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4500">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        @if(!empty($fnTitle))
+                            <div class="fw-semibold">{{ $fnTitle }}</div>
+                        @endif
+                        @if(!empty($fnMessage))
+                            <div>{{ $fnMessage }}</div>
+                        @endif
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @yield('scripts')
+
+    <script>
+        (function () {
+            const toastEl = document.getElementById('floatingToast');
+            if (!toastEl || !window.bootstrap || !bootstrap.Toast) return;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+
+            function playSound(key) {
+                const id = (key === 'status') ? 'notifSoundStatus' : 'notifSoundNew';
+                const audio = document.getElementById(id);
+                if (!audio || typeof audio.play !== 'function') return;
+                try {
+                    const p = audio.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (e) {}
+            }
+
+            const key = @json($fnSound);
+            playSound(key);
+        })();
+    </script>
+
+    @auth
+        <script>
+            (function () {
+                if (!window.bootstrap || !bootstrap.Toast) return;
+
+                const userRole = @json(auth()->user()->role ?? null);
+                const isAdminRole = (userRole === 'admin' || userRole === 'super_admin');
+
+                const pollUrl = "{{ route('notifications.poll') }}";
+                const storageKey = 'ct_notif_since_v1';
+                const statusMapKey = 'ct_ticket_status_map_v1';
+                const newUnassignedKey = 'ct_ticket_new_unassigned_notified_v1';
+                const intervalMs = 8000;
+                const maxToastsPerPoll = 3;
+
+                function playSound(key) {
+                    if (!key) return;
+                    const id = (key === 'status') ? 'notifSoundStatus' : 'notifSoundNew';
+                    const audio = document.getElementById(id);
+                    if (!audio || typeof audio.play !== 'function') return;
+                    try {
+                        const p = audio.play();
+                        if (p && typeof p.catch === 'function') p.catch(() => {});
+                    } catch (e) {}
+                }
+
+                function loadJson(key, fallback) {
+                    try {
+                        const raw = localStorage.getItem(key);
+                        if (!raw) return fallback;
+                        const parsed = JSON.parse(raw);
+                        return (parsed && typeof parsed === 'object') ? parsed : fallback;
+                    } catch (e) {
+                        return fallback;
+                    }
+                }
+
+                function saveJson(key, value) {
+                    try { localStorage.setItem(key, JSON.stringify(value || {})); } catch (e) {}
+                }
+
+                function ensureToastContainer() {
+                    let c = document.getElementById('floatingToastContainer');
+                    if (c) return c;
+                    c = document.createElement('div');
+                    c.id = 'floatingToastContainer';
+                    c.className = 'toast-container position-fixed top-0 end-0 p-3';
+                    c.style.zIndex = '2000';
+                    document.body.appendChild(c);
+                    return c;
+                }
+
+                function toastBg(type) {
+                    switch ((type || 'info').toLowerCase()) {
+                        case 'success': return 'success';
+                        case 'danger':
+                        case 'error': return 'danger';
+                        case 'warning': return 'warning';
+                        default: return 'info';
+                    }
+                }
+
+                function showToast(type, title, message, soundKey) {
+                    const container = ensureToastContainer();
+                    const bg = toastBg(type);
+                    const el = document.createElement('div');
+                    el.className = 'toast align-items-center text-bg-' + bg + ' border-0';
+                    el.setAttribute('role', 'alert');
+                    el.setAttribute('aria-live', 'assertive');
+                    el.setAttribute('aria-atomic', 'true');
+                    el.setAttribute('data-bs-delay', '4500');
+
+                    el.innerHTML =
+                        '<div class="d-flex">' +
+                            '<div class="toast-body">' +
+                                (title ? '<div class="fw-semibold">' + String(title) + '</div>' : '') +
+                                (message ? '<div>' + String(message) + '</div>' : '') +
+                            '</div>' +
+                            '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                        '</div>';
+
+                    container.appendChild(el);
+                    new bootstrap.Toast(el).show();
+                    playSound(soundKey);
+
+                    el.addEventListener('hidden.bs.toast', function () {
+                        try { el.remove(); } catch (e) {}
+                    });
+                }
+
+                function getSince() {
+                    const v = localStorage.getItem(storageKey);
+                    if (v) return v;
+                    const nowIso = new Date().toISOString();
+                    localStorage.setItem(storageKey, nowIso);
+                    return nowIso;
+                }
+
+                function setSince(v) {
+                    if (!v) return;
+                    try { localStorage.setItem(storageKey, v); } catch (e) {}
+                }
+
+                async function poll() {
+                    const since = getSince();
+                    const url = pollUrl + '?since=' + encodeURIComponent(since);
+
+                    const res = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin'
+                    });
+
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    if (data && data.serverNow) {
+                        setSince(data.serverNow);
+                    }
+
+                    const items = (data && Array.isArray(data.items)) ? data.items : [];
+                    if (items.length === 0) return;
+
+                    const statusMap = loadJson(statusMapKey, {});
+                    const newUnassignedNotified = loadJson(newUnassignedKey, {});
+                    const soundKeys = [];
+
+                    for (const it of items) {
+                        let soundKey = null;
+
+                        const ticketId = (it && it.ticket_id != null) ? String(it.ticket_id) : null;
+                        const status = (it && it.status != null) ? String(it.status) : null;
+                        const event = (it && it.event != null) ? String(it.event) : null;
+                        const hasAgent = !(it && (it.agent_id == null || it.agent_id === ''));
+
+                        if (ticketId) {
+                            if (event === 'ticket_created') {
+                                if (status) statusMap[ticketId] = status;
+
+                                if (isAdminRole && !hasAgent && status === 'open') {
+                                    if (!newUnassignedNotified[ticketId]) {
+                                        soundKey = 'new';
+                                        newUnassignedNotified[ticketId] = data && data.serverNow ? data.serverNow : (new Date().toISOString());
+                                    }
+                                }
+                            } else {
+                                if (status) {
+                                    const prev = statusMap[ticketId];
+                                    if (prev && prev !== status) {
+                                        soundKey = 'status';
+                                    }
+                                    statusMap[ticketId] = status;
+                                }
+                            }
+                        }
+
+                        soundKeys.push(soundKey);
+                    }
+
+                    saveJson(statusMapKey, statusMap);
+                    saveJson(newUnassignedKey, newUnassignedNotified);
+
+                    const showItems = items.slice(0, maxToastsPerPoll);
+                    for (let i = 0; i < showItems.length; i++) {
+                        const it = showItems[i];
+                        showToast(it.type || 'info', it.title || 'Notifikasi', it.message || '', soundKeys[i]);
+                    }
+                    if (items.length > maxToastsPerPoll) {
+                        showToast('info', 'Notifikasi', 'Dan ' + (items.length - maxToastsPerPoll) + ' lainnya', null);
+                    }
+                }
+
+                // Start polling after initial load
+                setTimeout(function () {
+                    poll().catch(() => {});
+                    setInterval(function () { poll().catch(() => {}); }, intervalMs);
+                }, 1500);
+            })();
+        </script>
+    @endauth
 </body>
 </html>

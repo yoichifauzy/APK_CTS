@@ -15,7 +15,7 @@
     <div class="row justify-content-center">
         <div class="col-sm-10 col-md-8 col-lg-5">
             <div class="text-center mb-3">
-                <small class="text-muted">Cloud Ticketing</small>
+                <small class="text-muted">CTM</small>
                 <h2 class="auth-title mt-1 mb-1">Buat Akun Baru</h2>
                 <div class="auth-muted">Akses dashboard dan mulai kelola tiket.</div>
             </div>

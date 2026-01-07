@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Firebase\TicketService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Routing\Controller;
 
@@ -11,7 +12,7 @@ class TicketDiscussionController extends Controller
 {
     public function __construct(private readonly TicketService $ticketService) {}
 
-    public function index()
+    public function index(Request $request)
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -33,7 +34,35 @@ class TicketDiscussionController extends Controller
             $tickets = $this->ticketService->getTicketsByCustomer((string) $user->id);
         }
 
-        return view('discussions.index', compact('tickets'));
+        $q = trim((string) $request->query('q', ''));
+        $status = trim((string) $request->query('status', ''));
+        $priority = trim((string) $request->query('priority', ''));
+
+        if ($q !== '') {
+            $qLower = mb_strtolower($q);
+            $tickets = array_values(array_filter($tickets, function ($t) use ($qLower) {
+                $hay = [
+                    (string) ($t['id'] ?? ''),
+                    (string) ($t['title'] ?? ''),
+                    (string) ($t['category'] ?? ''),
+                    (string) ($t['customer_name'] ?? ''),
+                    (string) ($t['agent_name'] ?? ''),
+                    (string) ($t['location'] ?? ''),
+                ];
+                $joined = mb_strtolower(implode(' ', $hay));
+                return str_contains($joined, $qLower);
+            }));
+        }
+
+        if ($status !== '') {
+            $tickets = array_values(array_filter($tickets, fn($t) => (string) ($t['status'] ?? '') === $status));
+        }
+
+        if ($priority !== '') {
+            $tickets = array_values(array_filter($tickets, fn($t) => (string) ($t['priority'] ?? '') === $priority));
+        }
+
+        return view('discussions.index', compact('tickets', 'q', 'status', 'priority'));
     }
 
     public function show(string $ticket)

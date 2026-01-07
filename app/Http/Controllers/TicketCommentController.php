@@ -22,6 +22,8 @@ class TicketCommentController extends Controller
         // Validasi input
         $request->validate([
             'message' => 'required|string|max:2000',
+            'attachments' => 'nullable',
+            'attachments.*' => 'file|max:5120',
         ]);
 
         $ticketData = $this->ticketService->getTicket($ticket);
@@ -57,11 +59,22 @@ class TicketCommentController extends Controller
         }
 
         // Simpan komentar - PENTING: field database name-nya 'comment', bukan 'message'
+        $uploaded = [];
+        try {
+            $files = $request->file('attachments');
+            if (is_array($files) && count($files) > 0) {
+                $uploaded = $this->ticketService->uploadAttachments($files, $ticket);
+            }
+        } catch (\Throwable $e) {
+            $uploaded = [];
+        }
+
         $this->ticketService->addComment($ticket, [
             'user_id' => $user->id,
             'user_name' => $user->name,
             'role' => $user->role,
             'comment' => $request->string('message')->toString(), // Form field: 'message', DB field: 'comment'
+            'attachments' => $uploaded,
         ]);
 
         $redirectTo = $request->input('redirect_to');

@@ -10,7 +10,7 @@
 <style>
     .pill { border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: .85rem; }
     .panel { border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 24px rgba(15,23,42,0.06); }
-    .panel-header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; letter-spacing: .01em; }
+    .panel-header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 700; letter-spacing: .01em; background: var(--bs-primary-bg-subtle); }
     .timeline { position: relative; padding-left: 24px; }
     .timeline::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: #e5e7eb; }
     .timeline-item { position: relative; padding: 10px 0 10px 12px; --tl-rgb: var(--bs-primary-rgb); }
@@ -32,6 +32,8 @@
     .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#2563eb,#7c3aed); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
     .badge-role { font-size: .75rem; }
     .comment-body { background: #f8fafc; border-radius: 10px; padding: 10px 12px; }
+
+    /* Status/priority badges use Bootstrap built-ins: primary/info/warning/success/danger */
 
     /* Responsive styles */
     @media (max-width: 992px) {
@@ -157,11 +159,11 @@
         <div class="text-muted">ID: {{ $ticket['id'] }}</div>
         @php
             $statusColors = [
-                'open' => 'secondary',
+                'open' => 'primary',
                 'assigned' => 'info',
                 'in_progress' => 'warning',
                 'resolved' => 'success',
-                'closed' => 'dark',
+                'closed' => 'danger',
             ];
             $priorityColors = [
                 'low' => 'success',
@@ -174,7 +176,7 @@
                 $stat = $ticket['status'] ?? 'open';
                 $prio = $ticket['priority'] ?? '-';
             @endphp
-            <span class="badge text-bg-{{ $statusColors[$stat] ?? 'secondary' }}">{{ $stat }}</span>
+            <span class="badge text-bg-{{ $statusColors[$stat] ?? 'secondary' }}">{{ ucfirst(str_replace('_',' ',$stat)) }}</span>
             <span class="badge text-bg-{{ $priorityColors[$prio] ?? 'secondary' }}">{{ $prio }}</span>
             @if(isset($ticket['attachments']) && (is_array($ticket['attachments']) || (function_exists('is_countable') && is_countable($ticket['attachments']))) && count($ticket['attachments']) > 0)
                 <span class="badge text-bg-light text-dark">{{ count($ticket['attachments']) }} lampiran</span>
@@ -402,7 +404,9 @@
                 <div class="card">
                     <div class="card-header bg-warning text-dark"><i class="fa-solid fa-user-gear me-2"></i>Tugaskan Agent</div>
                     <div class="card-body">
-                        @php($ticketStatus = $ticket['status'] ?? 'open')
+                        @php
+                            $ticketStatus = $ticket['status'] ?? 'open';
+                        @endphp
                         @if(in_array($ticketStatus, ['resolved','closed']))
                             <div class="alert alert-info mb-3">
                                 Ticket sudah <strong>{{ strtoupper($ticketStatus) }}</strong> sehingga tidak bisa ditugaskan kembali.
@@ -482,7 +486,9 @@
                     @if(in_array(auth()->user()->role, ['admin','super_admin','agent'], true))
                         <form method="POST" action="{{ route('tickets.updateStatus', $ticket['id']) }}" enctype="multipart/form-data" id="status-form">
                             @csrf
-                            @php($cur = $ticket['status'] ?? 'open')
+                            @php
+                                $cur = $ticket['status'] ?? 'open';
+                            @endphp
                             <div class="mb-2">
                                 <label class="form-label">Status Saat Ini</label>
                                 <select name="status" class="form-select form-select-sm">

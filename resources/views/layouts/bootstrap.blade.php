@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', config('app.name', 'Cloud Ticketing'))</title>
+    <title>@yield('title', config('app.name', 'CTM'))</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -35,7 +35,7 @@
     @if(!$noNavbar)
         <nav class="navbar navbar-expand-lg navbar-dark navbar-modern shadow-sm">
             <div class="container">
-                <a class="navbar-brand fw-bold" href="{{ route('home') }}"><i class="fa-solid fa-cloud me-2"></i>CloudTicket</a>
+                <a class="navbar-brand fw-bold" href="{{ route('home') }}"><i class="fa-solid fa-cloud me-2"></i>CTM</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -100,14 +100,14 @@
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <div class="fw-semibold"><i class="fa-solid fa-cloud me-2"></i>CloudTicket</div>
-                        <div class="text-white-50">Modern Customer Support Platform</div>
+                        <div class="fw-semibold"><i class="fa-solid fa-cloud me-2"></i>CTM</div>
+                        <div class="text-white-50">Cloud Ticketing Manufacturing</div>
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <a href="{{ route('home') }}" class="me-3">Beranda</a>
                         <a href="{{ route('login') }}" class="me-3">Masuk</a>
                         <a href="{{ route('register') }}">Daftar</a>
-                        <div class="text-white-50 mt-2">&copy; {{ date('Y') }} CloudTicket. All rights reserved.</div>
+                        <div class="text-white-50 mt-2">&copy; {{ date('Y') }} CTM. All rights reserved.</div>
                     </div>
                 </div>
             </div>

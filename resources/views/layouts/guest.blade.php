@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'CloudTicket') }}</title>
+        <title>{{ config('app.name', 'CTM') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -22,9 +22,9 @@
             <div class="text-center text-white">
                 <a href="/" class="inline-flex items-center gap-2 text-2xl font-extrabold tracking-tight">
                     <i class="fa-solid fa-cloud"></i>
-                    <span>CloudTicket</span>
+                    <span>CTM</span>
                 </a>
-                <p class="mt-1 text-white/80 text-sm">Modern Customer Support Platform</p>
+                <p class="mt-1 text-white/80 text-sm">Cloud Ticketing Manufacturing</p>
             </div>
 
             <div class="w-full sm:max-w-md mt-6 px-6 py-6 bg-white/95 backdrop-blur border border-white/40 shadow-2xl rounded-2xl">
@@ -32,7 +32,7 @@
             </div>
 
             <div class="mt-6 text-white/80 text-sm">
-                &copy; {{ date('Y') }} CloudTicket · <a href="/" class="underline hover:text-white">Beranda</a>
+                &copy; {{ date('Y') }} CTM · <a href="/" class="underline hover:text-white">Beranda</a>
             </div>
         </div>
     </body>

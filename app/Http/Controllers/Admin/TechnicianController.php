@@ -38,7 +38,7 @@ class TechnicianController extends Controller
         return view('admin.technicians.index', compact('users', 'level'));
     }
 
-    public function tracking()
+    public function tracking(Request $request)
     {
         /** @var User $admin */
         $admin = Auth::user();
@@ -51,6 +51,19 @@ class TechnicianController extends Controller
             $query->where('category_id', $admin->category_id);
         } else {
             $query->whereRaw('1 = 0');
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            $query->where(function ($inner) use ($q) {
+                $inner->where('name', 'like', '%' . $q . '%')
+                    ->orWhere('email', 'like', '%' . $q . '%');
+            });
+        }
+
+        $level = $request->query('level');
+        if (in_array($level, ['junior', 'intermediate', 'expert'], true)) {
+            $query->where('availability_status', $level);
         }
 
         $agents = $query->get();
@@ -75,7 +88,15 @@ class TechnicianController extends Controller
             }
         }
 
-        return view('admin.technicians.tracking', compact('agents', 'workStatus'));
+        $status = trim((string) $request->query('status', ''));
+        if (in_array($status, ['open', 'assigned', 'in_progress', 'resolved'], true)) {
+            $agents = $agents->filter(function ($agent) use ($workStatus, $status) {
+                $cur = $workStatus[$agent->id] ?? 'open';
+                return (string) $cur === (string) $status;
+            })->values();
+        }
+
+        return view('admin.technicians.tracking', compact('agents', 'workStatus', 'q', 'level', 'status'));
     }
 
     public function create()
