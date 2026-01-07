@@ -36,15 +36,18 @@
         <div class="text-muted small">Menampilkan tiket sesuai kategori/jobdesk Admin</div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-outline-secondary" href="{{ route('admin.reports.exportPdf', request()->query()) }}">
-            <i class="fa-solid fa-download me-2"></i>Download
-        </a>
-        <a class="btn btn-outline-secondary" href="{{ route('admin.reports.exportCsv', request()->query()) }}">
-            <i class="fa-solid fa-file-excel me-2"></i>Excel/CSV
-        </a>
-        <button class="btn btn-outline-secondary" type="button" id="btn-report-print" data-url="{{ route('admin.reports.print', request()->query()) }}">
-            <i class="fa-solid fa-print me-2"></i>PDF/Cetak
-        </button>
+            <a class="btn btn-warning text-dark" href="{{ route('admin.reports.exportPdf', request()->query()) }}">
+                <i class="fa-solid fa-download me-2"></i>Download
+            </a>
+            <a class="btn btn-success" href="{{ route('admin.reports.exportCsv', request()->query()) }}">
+                <i class="fa-solid fa-file-excel me-2"></i>Excel/CSV
+            </a>
+            <button class="btn btn-danger" type="button" id="btn-report-print" data-url="{{ route('admin.reports.print', request()->query()) }}">
+                <i class="fa-solid fa-print me-2"></i>PDF/Cetak
+            </button>
+            <a class="btn btn-secondary" href="{{ route('admin.reports.index') }}">
+                <i class="fa-solid fa-arrow-left me-2"></i>Kembali
+            </a>
     </div>
 </div>
 
@@ -144,31 +147,50 @@
             const url = btn.getAttribute('data-url');
             if (!url) return;
 
+            const launchPrint = (targetUrl) => {
+                const iframe = document.createElement('iframe');
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = '0';
+                iframe.src = targetUrl;
+                iframe.onload = function(){
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {}
+                    setTimeout(() => { iframe.remove(); }, 1500);
+                };
+                document.body.appendChild(iframe);
+            };
+
+            const start = () => {
+                let target = url;
+                try {
+                    const u = new URL(url, window.location.origin);
+                    target = u.toString();
+                } catch (e) {}
+                launchPrint(target);
+            };
+
             if (typeof Swal === 'undefined') {
-                window.location.href = url;
+                start();
                 return;
             }
 
             Swal.fire({
                 icon: 'question',
                 title: 'Cetak Laporan?',
-                html: 'Akan membuka halaman cetak. Lanjutkan?',
+                html: 'Dialog cetak PDF akan muncul.',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, Cetak',
                 cancelButtonText: 'Batal',
                 reverseButtons: true,
             }).then((res) => {
                 if (res.isConfirmed) {
-                    try {
-                        const u = new URL(url, window.location.origin);
-                        if (!u.searchParams.has('autoprint')) {
-                            u.searchParams.set('autoprint', '1');
-                        }
-                        window.location.href = u.toString();
-                    } catch (e) {
-                        const sep = url.includes('?') ? '&' : '?';
-                        window.location.href = url + sep + 'autoprint=1';
-                    }
+                    start();
                 }
             });
         });

@@ -238,6 +238,8 @@
                         </a>
                     </div>
 
+                    {{-- Grafik dipindahkan ke bagian bawah agar sejajar 4 kolom --}}
+
                 @elseif($role === 'agent')
                     <h5 class="card-title"><i class="fa-solid fa-headset me-2"></i>Agent Dashboard</h5>
 
@@ -254,6 +256,26 @@
                         </div>
                     @endif
 
+                    <hr class="my-4">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Status Ticket (Saya)</h6>
+                                    <canvas id="agentTicketStatusChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket (Saya)</h6>
+                                    <canvas id="agentTicketPriorityChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 @else
                     <h5 class="card-title"><i class="fa-solid fa-user me-2"></i>Customer Dashboard</h5>
 
@@ -265,6 +287,26 @@
                             <i class="fa-solid fa-ticket me-2"></i>Tiket Saya ({{ $stats['total'] }})
                         </a>
                     </div>
+
+                    <hr class="my-4">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Status Ticket Saya</h6>
+                                    <canvas id="customerTicketStatusChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket Saya</h6>
+                                    <canvas id="customerTicketPriorityChart" height="140"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 @endif
             </div>
         </div>
@@ -274,7 +316,7 @@
 {{-- CHARTS - HANYA UNTUK SUPER ADMIN --}}
 @if($role === 'super_admin')
 <div class="row g-3 mt-4">
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="card">
             <div class="card-header"><i class="fa-solid fa-users me-2"></i>Jumlah Admin vs Agent</div>
             <div class="card-body">
@@ -282,7 +324,7 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="card">
             <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Admin per Jobdesk</div>
             <div class="card-body">
@@ -290,11 +332,19 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="card">
             <div class="card-header"><i class="fa-solid fa-chart-pie me-2"></i>Agent per Jobdesk</div>
             <div class="card-body">
                 <canvas id="chartStatusLine" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-chart-column me-2"></i>Status Ticket (Global)</div>
+            <div class="card-body">
+                <canvas id="superAdminTicketStatusChart" height="280"></canvas>
             </div>
         </div>
     </div>
@@ -303,10 +353,13 @@
 @endsection
 
 @section('scripts')
-    @if(($role ?? 'customer') === 'admin')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-        <script>
-            (function () {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        (function(){
+            const role = '{{ $role }}';
+
+            // ADMIN charts
+            if (role === 'admin') {
                 const statusLabels = @json(($adminTicketStatusLabels ?? collect())->values());
                 const statusValues = @json(($adminTicketStatusValues ?? collect())->values());
                 const prioLabels = @json(($adminTicketPriorityLabels ?? collect())->values());
@@ -320,21 +373,8 @@
                 if (el1) {
                     new Chart(el1, {
                         type: 'bar',
-                        data: {
-                            labels: statusLabels,
-                            datasets: [{
-                                label: 'Tickets',
-                                data: statusValues,
-                                backgroundColor: 'rgba(37, 99, 235, 0.25)',
-                                borderColor: 'rgba(37, 99, 235, 0.9)',
-                                borderWidth: 1,
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                        }
+                        data: { labels: statusLabels, datasets: [{ label: 'Tickets', data: statusValues, backgroundColor: 'rgba(37, 99, 235, 0.25)', borderColor: 'rgba(37, 99, 235, 0.9)', borderWidth: 1 }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
                     });
                 }
 
@@ -342,22 +382,8 @@
                 if (el2) {
                     new Chart(el2, {
                         type: 'line',
-                        data: {
-                            labels: prioLabels,
-                            datasets: [{
-                                label: 'Tickets',
-                                data: prioValues,
-                                borderColor: 'rgba(245, 158, 11, 0.95)',
-                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                tension: 0.25,
-                                fill: true,
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                        }
+                        data: { labels: prioLabels, datasets: [{ label: 'Tickets', data: prioValues, borderColor: 'rgba(245, 158, 11, 0.95)', backgroundColor: 'rgba(245, 158, 11, 0.15)', tension: 0.25, fill: true }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
                     });
                 }
 
@@ -365,25 +391,7 @@
                 if (el3) {
                     new Chart(el3, {
                         type: 'doughnut',
-                        data: {
-                            labels: techStatusLabels,
-                            datasets: [{
-                                data: techStatusValues,
-                                backgroundColor: [
-                                    'rgba(107, 114, 128, 0.35)',
-                                    'rgba(245, 158, 11, 0.35)',
-                                    'rgba(249, 115, 22, 0.35)',
-                                    'rgba(22, 163, 74, 0.35)'
-                                ],
-                                borderColor: [
-                                    'rgba(107, 114, 128, 0.95)',
-                                    'rgba(245, 158, 11, 0.95)',
-                                    'rgba(249, 115, 22, 0.95)',
-                                    'rgba(22, 163, 74, 0.95)'
-                                ],
-                                borderWidth: 1,
-                            }]
-                        },
+                        data: { labels: techStatusLabels, datasets: [{ data: techStatusValues, backgroundColor: ['rgba(107,114,128,0.35)','rgba(245,158,11,0.35)','rgba(249,115,22,0.35)','rgba(22,163,74,0.35)'], borderColor: ['rgba(107,114,128,0.95)','rgba(245,158,11,0.95)','rgba(249,115,22,0.95)','rgba(22,163,74,0.95)'], borderWidth: 1 }] },
                         options: { responsive: true }
                     });
                 }
@@ -392,136 +400,115 @@
                 if (el4) {
                     new Chart(el4, {
                         type: 'pie',
-                        data: {
-                            labels: techLevelLabels,
-                            datasets: [{
-                                data: techLevelValues,
-                                backgroundColor: [
-                                    'rgba(59, 130, 246, 0.35)',
-                                    'rgba(245, 158, 11, 0.35)',
-                                    'rgba(22, 163, 74, 0.35)'
-                                ],
-                                borderColor: [
-                                    'rgba(59, 130, 246, 0.95)',
-                                    'rgba(245, 158, 11, 0.95)',
-                                    'rgba(22, 163, 74, 0.95)'
-                                ],
-                                borderWidth: 1,
-                            }]
-                        },
+                        data: { labels: techLevelLabels, datasets: [{ data: techLevelValues, backgroundColor: ['rgba(59,130,246,0.35)','rgba(245,158,11,0.35)','rgba(22,163,74,0.35)'], borderColor: ['rgba(59,130,246,0.95)','rgba(245,158,11,0.95)','rgba(22,163,74,0.95)'], borderWidth: 1 }] },
                         options: { responsive: true }
                     });
                 }
-            })();
-        </script>
-    @endif
-@endsection
-
-@section('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script>
-        (function(){
-            // Grafik hanya untuk super admin
-            const isSuperAdmin = '{{ $role }}' === 'super_admin';
-            if (!isSuperAdmin) return;
-
-            function byId(id){ return document.getElementById(id); }
-
-            const barEl = byId('chartStatusBar');
-            if (barEl){
-                const userLabels = ['Admin','Agent'];
-                const userValues = [
-                    {{ (int)($adminTotal ?? 0) }},
-                    {{ (int)($agentTotal ?? 0) }},
-                ];
-                new Chart(barEl, {
-                    type: 'bar',
-                    data: {
-                        labels: userLabels,
-                        datasets: [{
-                            label: 'Jumlah',
-                            data: userValues,
-                            backgroundColor: [
-                                'rgba(220,53,69,0.85)',  // danger
-                                'rgba(255,193,7,0.85)',  // warning
-                            ],
-                            borderRadius: 10,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
-                        }
-                    }
-                });
             }
 
-            const donutEl = byId('chartStatusDonut');
-            if (donutEl){
-                const labels = @json($adminJobdeskLabels ?? []);
-                const values = @json($adminJobdeskValues ?? []);
+            // SUPER ADMIN charts
+            if (role === 'super_admin') {
+                const barEl = document.getElementById('chartStatusBar');
+                if (barEl){
+                    const userLabels = ['Admin','Agent'];
+                    const userValues = [ {{ (int)($adminTotal ?? 0) }}, {{ (int)($agentTotal ?? 0) }} ];
+                    new Chart(barEl, {
+                        type: 'bar',
+                        data: { labels: userLabels, datasets: [{ label: 'Jumlah', data: userValues, backgroundColor: ['rgba(220,53,69,0.85)','rgba(255,193,7,0.85)'], borderRadius: 10 }] },
+                        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                    });
+                }
 
-                new Chart(donutEl, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels.length ? labels : ['-'],
-                        datasets: [{
-                            data: values.length ? values : [0],
-                            backgroundColor: [
-                                'rgba(220,53,69,0.85)',
-                                'rgba(13,202,240,0.85)',
-                                'rgba(255,193,7,0.85)',
-                                'rgba(25,135,84,0.85)',
-                                'rgba(108,117,125,0.85)',
-                                'rgba(111,66,193,0.85)',
-                            ],
-                            borderWidth: 0,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        cutout: '62%',
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
-                    }
-                });
+                const globalStatusEl = document.getElementById('superAdminTicketStatusChart');
+                if (globalStatusEl) {
+                    const labels = ['open','assigned','in_progress','resolved','closed'];
+                    const values = [
+                        {{ (int)($stats['open'] ?? 0) }},
+                        {{ (int)($stats['assigned'] ?? 0) }},
+                        {{ (int)($stats['in_progress'] ?? 0) }},
+                        {{ (int)($stats['resolved'] ?? 0) }},
+                        {{ (int)($stats['closed'] ?? 0) }}
+                    ];
+                    new Chart(globalStatusEl, {
+                        type: 'bar',
+                        data: { labels: labels, datasets: [{ label: 'Tickets', data: values, backgroundColor: 'rgba(37, 99, 235, 0.25)', borderColor: 'rgba(37, 99, 235, 0.9)', borderWidth: 1 }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                    });
+                }
+
+                const donutEl = document.getElementById('chartStatusDonut');
+                if (donutEl){
+                    const labels = @json($adminJobdeskLabels ?? []);
+                    const values = @json($adminJobdeskValues ?? []);
+                    new Chart(donutEl, {
+                        type: 'doughnut',
+                        data: { labels: labels.length ? labels : ['-'], datasets: [{ data: values.length ? values : [0], backgroundColor: ['rgba(220,53,69,0.85)','rgba(13,202,240,0.85)','rgba(255,193,7,0.85)','rgba(25,135,84,0.85)','rgba(108,117,125,0.85)','rgba(111,66,193,0.85)'], borderWidth: 0 }] },
+                        options: { responsive: true, maintainAspectRatio: true, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
+
+                const lineEl = document.getElementById('chartStatusLine');
+                if (lineEl){
+                    const labels = @json($agentJobdeskLabels ?? []);
+                    const values = @json($agentJobdeskValues ?? []);
+                    new Chart(lineEl, {
+                        type: 'doughnut',
+                        data: { labels: labels.length ? labels : ['-'], datasets: [{ data: values.length ? values : [0], backgroundColor: ['rgba(255,193,7,0.85)','rgba(13,202,240,0.85)','rgba(25,135,84,0.85)','rgba(108,117,125,0.85)','rgba(220,53,69,0.85)','rgba(111,66,193,0.85)'], borderWidth: 0 }] },
+                        options: { responsive: true, maintainAspectRatio: true, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
             }
 
-            const lineEl = byId('chartStatusLine');
-            if (lineEl){
-                const labels = @json($agentJobdeskLabels ?? []);
-                const values = @json($agentJobdeskValues ?? []);
-                new Chart(lineEl, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels.length ? labels : ['-'],
-                        datasets: [{
-                            data: values.length ? values : [0],
-                            backgroundColor: [
-                                'rgba(255,193,7,0.85)',
-                                'rgba(13,202,240,0.85)',
-                                'rgba(25,135,84,0.85)',
-                                'rgba(108,117,125,0.85)',
-                                'rgba(220,53,69,0.85)',
-                                'rgba(111,66,193,0.85)',
-                            ],
-                            borderWidth: 0,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        cutout: '62%',
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
-                    }
-                });
+            // AGENT charts
+            if (role === 'agent') {
+                const statusLabels = @json(($agentStatusLabels ?? collect())->values());
+                const statusValues = @json(($agentStatusValues ?? collect())->values());
+                const prioLabels = @json(($agentPriorityLabels ?? collect())->values());
+                const prioValues = @json(($agentPriorityValues ?? collect())->values());
+
+                const sEl = document.getElementById('agentTicketStatusChart');
+                if (sEl) {
+                    new Chart(sEl, {
+                        type: 'bar',
+                        data: { labels: statusLabels, datasets: [{ label: 'Tickets', data: statusValues, backgroundColor: 'rgba(13,110,253,0.25)', borderColor: 'rgba(13,110,253,0.9)', borderWidth: 1 }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                    });
+                }
+
+                const pEl = document.getElementById('agentTicketPriorityChart');
+                if (pEl) {
+                    new Chart(pEl, {
+                        type: 'doughnut',
+                        data: { labels: prioLabels, datasets: [{ data: prioValues, backgroundColor: ['rgba(25,135,84,0.7)','rgba(255,193,7,0.7)','rgba(220,53,69,0.7)'], borderWidth: 0 }] },
+                        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
+            }
+
+            // CUSTOMER charts
+            if (role === 'customer') {
+                const statusLabels = @json(($customerStatusLabels ?? collect())->values());
+                const statusValues = @json(($customerStatusValues ?? collect())->values());
+                const prioLabels = @json(($customerPriorityLabels ?? collect())->values());
+                const prioValues = @json(($customerPriorityValues ?? collect())->values());
+
+                const sEl = document.getElementById('customerTicketStatusChart');
+                if (sEl) {
+                    new Chart(sEl, {
+                        type: 'bar',
+                        data: { labels: statusLabels, datasets: [{ label: 'Tickets', data: statusValues, backgroundColor: 'rgba(99,102,241,0.25)', borderColor: 'rgba(99,102,241,0.9)', borderWidth: 1 }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                    });
+                }
+
+                const pEl = document.getElementById('customerTicketPriorityChart');
+                if (pEl) {
+                    new Chart(pEl, {
+                        type: 'doughnut',
+                        data: { labels: prioLabels, datasets: [{ data: prioValues, backgroundColor: ['rgba(25,135,84,0.7)','rgba(255,193,7,0.7)','rgba(220,53,69,0.7)'], borderWidth: 0 }] },
+                        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
             }
         })();
     </script>

@@ -449,6 +449,16 @@ class TicketController extends Controller
             'status' => 'assigned',
         ]);
 
+        // Record assigning admin in Laravel DB (best-effort)
+        try {
+            $ticketModel = Ticket::where('firebase_id', $id)->first();
+            if ($ticketModel) {
+                $ticketModel->update(['assigned_by' => $user->id]);
+            }
+        } catch (\Throwable $e) {
+            // ignore write failure
+        }
+
         $ticketTitle = null;
         try {
             $t = $this->ticketService->getTicket($id);

@@ -16,6 +16,7 @@ class NotificationController extends Controller
         }
 
         $openUnassignedCount = null;
+        $customerOpenCount = null;
         if (in_array($user->role, ['admin', 'super_admin'], true)) {
             $base = Ticket::query();
             if ($user->role === 'admin') {
@@ -29,6 +30,11 @@ class NotificationController extends Controller
             $openUnassignedCount = (int) (clone $base)
                 ->where('status', 'open')
                 ->whereNull('agent_id')
+                ->count();
+        } elseif ($user->role === 'customer') {
+            $customerOpenCount = (int) Ticket::query()
+                ->where('customer_id', $user->id)
+                ->where('status', 'open')
                 ->count();
         }
 
@@ -134,9 +140,39 @@ class NotificationController extends Controller
             ];
         }
 
+        // Admin summary: always show count of Open & belum ditugaskan
+        if ($openUnassignedCount !== null && $openUnassignedCount > 0) {
+            $items[] = [
+                'event' => 'admin_open_summary',
+                'type' => 'info',
+                'title' => 'Tiket Open',
+                'message' => 'Ada ' . $openUnassignedCount . ' tiket open belum ditugaskan',
+                'ticket_id' => null,
+                'status' => 'open',
+                'agent_id' => null,
+                'created_at' => null,
+                'updated_at' => null,
+            ];
+        }
+
+        // Customer summary: remind open tickets
+        if ($customerOpenCount !== null && $customerOpenCount > 0) {
+            $items[] = [
+                'event' => 'customer_open_summary',
+                'type' => 'warning',
+                'title' => 'Tiket Anda Masih Open',
+                'message' => 'Ada ' . $customerOpenCount . ' tiket belum diproses',
+                'ticket_id' => null,
+                'status' => 'open',
+                'agent_id' => null,
+                'created_at' => null,
+                'updated_at' => null,
+            ];
+        }
+
         return response()->json([
             'serverNow' => now()->toISOString(),
-            'items' => $items,
+            'items' => array_values($items),
         ]);
     }
 }

@@ -51,6 +51,7 @@ class Ticket extends Model
         'location',
         'customer_id',
         'agent_id',
+        'assigned_by',
         'category_id',
         'status',
         'priority',
@@ -88,6 +89,14 @@ class Ticket extends Model
     public function agent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'agent_id');
+    }
+
+    /**
+     * Relasi ke User (sebagai Admin Penugas)
+     */
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
     }
 
     /**

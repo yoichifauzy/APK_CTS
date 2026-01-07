@@ -78,7 +78,8 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 45%">Judul</th>
+                                <th style="width: 60px">No</th>
+                                <th style="width: 40%">Judul</th>
                                 <th>Status</th>
                                 <th>Prioritas</th>
                                 <th>Terakhir Update</th>
@@ -92,6 +93,7 @@
                                     $prio = (string) ($t['priority'] ?? '');
                                 @endphp
                                 <tr>
+                                    <td>{{ $loop->iteration }}</td>
                                     <td>
                                         <div class="fw-semibold">{{ $t['title'] ?? 'Ticket' }}</div>
                                         <div class="text-muted small">ID: {{ $t['id'] ?? '-' }}</div>

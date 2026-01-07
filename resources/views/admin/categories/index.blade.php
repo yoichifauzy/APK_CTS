@@ -67,7 +67,21 @@
 <div class="container-fluid">
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Manajemen Kategori</h1>
-    <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">Tambah Kategori</a>
+    <div class="d-flex gap-2">
+        <div class="btn-group" role="group">
+            <a href="{{ route('admin.categories.exportPdf') }}" class="btn btn-sm btn-warning text-dark" title="Download" download>
+                <i class="fa-solid fa-download me-1"></i>Download
+            </a>
+            <a href="{{ route('admin.categories.exportCsv') }}" class="btn btn-sm btn-success" title="Export CSV">
+                <i class="fa-solid fa-file-csv me-1"></i>CSV
+            </a>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-categories-print" title="Cetak/PDF">
+                <i class="fa-solid fa-print me-1"></i>PDF/Cetak
+            </button>
+        </div>
+        </div>
+        <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">Tambah Kategori</a>
+    </div>
 </div>
 
 <div class="card">
@@ -79,6 +93,8 @@
                     <th>Nama</th>
                     <th>Slug</th>
                     <th>Deskripsi</th>
+                    <th>Jumlah Admin</th>
+                    <th>Jumlah Teknisi</th>
                     <th class="text-end">Aksi</th>
                 </tr>
             </thead>
@@ -95,6 +111,8 @@
                         <td>{{ $c->name }}</td>
                         <td>{{ $c->slug }}</td>
                         <td>{{ $c->description }}</td>
+                        <td>{{ (int)($c->admins_count ?? 0) }}</td>
+                        <td>{{ (int)($c->agents_count ?? 0) }}</td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end gap-2">
                                 <a href="{{ route('admin.categories.edit', $c) }}" class="btn btn-sm btn-outline-primary">Edit</a>
@@ -146,5 +164,30 @@ function confirmDelete(url, itemName) {
         }
     });
 }
+
+document.getElementById('btn-categories-print')?.addEventListener('click', function() {
+    const printUrl = '{{ route('admin.categories.exportPdf') }}';
+    Swal.fire({
+        title: 'Cetak Laporan Kategori?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Cetak',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = printUrl;
+            document.body.appendChild(iframe);
+            iframe.onload = function() {
+                iframe.focus();
+                iframe.contentWindow.print();
+            };
+        }
+    });
+});
 </script>
 @endsection

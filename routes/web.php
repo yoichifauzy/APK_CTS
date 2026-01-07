@@ -94,6 +94,16 @@ Route::get('/dashboard', function () {
         'total' => 0
     ];
 
+    $agentStatusLabels = collect();
+    $agentStatusValues = collect();
+    $agentPriorityLabels = collect();
+    $agentPriorityValues = collect();
+
+    $customerStatusLabels = collect();
+    $customerStatusValues = collect();
+    $customerPriorityLabels = collect();
+    $customerPriorityValues = collect();
+
     // STEP 3: Hitung statistik berdasarkan role user
 
     if ($role === 'super_admin') {
@@ -139,6 +149,26 @@ Route::get('/dashboard', function () {
         $stats['total'] = \App\Models\Ticket::where('agent_id', $user->id)
             ->whereNotIn('status', ['resolved', 'closed'])
             ->count();
+
+        $agentStatusLabels = collect(['open', 'assigned', 'in_progress', 'resolved', 'closed']);
+        $agentStatusValues = collect([
+            (int) $stats['open'],
+            (int) $stats['assigned'],
+            (int) $stats['in_progress'],
+            (int) $stats['resolved'],
+            (int) $stats['closed'],
+        ]);
+
+        $prioRows = \App\Models\Ticket::query()
+            ->where('agent_id', $user->id)
+            ->whereNotNull('priority')
+            ->select('priority', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
+            ->groupBy('priority')
+            ->get();
+        $prioMap = $prioRows->pluck('total', 'priority')->map(fn($v) => (int) $v);
+        $priorityOrder = ['low', 'medium', 'high'];
+        $agentPriorityLabels = collect($priorityOrder);
+        $agentPriorityValues = collect(array_map(fn($p) => (int) ($prioMap[$p] ?? 0), $priorityOrder));
     } else {
         // CUSTOMER: Hanya lihat tickets MILIK dia (filter by customer_id)
         $stats['open'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'open')->count();
@@ -147,6 +177,26 @@ Route::get('/dashboard', function () {
         $stats['resolved'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'resolved')->count();
         $stats['closed'] = \App\Models\Ticket::where('customer_id', $user->id)->where('status', 'closed')->count();
         $stats['total'] = \App\Models\Ticket::where('customer_id', $user->id)->count();
+
+        $customerStatusLabels = collect(['open', 'assigned', 'in_progress', 'resolved', 'closed']);
+        $customerStatusValues = collect([
+            (int) $stats['open'],
+            (int) $stats['assigned'],
+            (int) $stats['in_progress'],
+            (int) $stats['resolved'],
+            (int) $stats['closed'],
+        ]);
+
+        $prioRows = \App\Models\Ticket::query()
+            ->where('customer_id', $user->id)
+            ->whereNotNull('priority')
+            ->select('priority', \Illuminate\Support\Facades\DB::raw('COUNT(*) as total'))
+            ->groupBy('priority')
+            ->get();
+        $prioMap = $prioRows->pluck('total', 'priority')->map(fn($v) => (int) $v);
+        $priorityOrder = ['low', 'medium', 'high'];
+        $customerPriorityLabels = collect($priorityOrder);
+        $customerPriorityValues = collect(array_map(fn($p) => (int) ($prioMap[$p] ?? 0), $priorityOrder));
     }
 
     // =========================
@@ -325,7 +375,7 @@ Route::get('/dashboard', function () {
     // =============================================================
     // Floating notification: new incoming tickets (admin/agent)
     // =============================================================
-    if (in_array($role, ['admin', 'agent'], true)) {
+    if (in_array($role, ['admin', 'agent', 'customer'], true)) {
         $sessionKey = 'dashboard_last_seen_at:' . $role . ':' . ((int) ($user->id ?? 0));
         $lastSeenRaw = session($sessionKey);
 
@@ -343,18 +393,21 @@ Route::get('/dashboard', function () {
             } else {
                 $q->whereRaw('1 = 0');
             }
-            // Admin notification: hanya tiket Open yang belum ditugaskan
+            // Admin notification: jumlah tiket Open & belum ditugaskan (selalu tampil jika ada)
             $newCount = (int) $q
                 ->where('status', 'open')
                 ->whereNull('agent_id')
-                ->where('created_at', '>', $since)
                 ->count();
         } elseif ($role === 'agent') {
-            // For agent, treat newly assigned/updated tickets as "new"
+            // Agent reminder: tiket yang belum selesai (assigned/in_progress)
             $newCount = (int) \App\Models\Ticket::query()
                 ->where('agent_id', $user->id)
                 ->whereIn('status', ['assigned', 'in_progress'])
-                ->where('updated_at', '>', $since)
+                ->count();
+        } elseif ($role === 'customer') {
+            $newCount = (int) \App\Models\Ticket::query()
+                ->where('customer_id', $user->id)
+                ->where('status', 'open')
                 ->count();
         }
 
@@ -362,9 +415,15 @@ Route::get('/dashboard', function () {
 
         if ($newCount > 0) {
             session()->flash('floating_notification', [
-                'type' => 'info',
-                'title' => 'Tiket Baru',
-                'message' => 'Ada ' . $newCount . ' tiket masuk',
+                'type' => $role === 'customer' ? 'warning' : 'info',
+                'sound' => $role === 'agent' ? 'status' : null,
+                'title' => $role === 'customer' ? 'Tiket Belum Diproses' : 'Tiket Baru',
+                'message' => $role === 'customer'
+                    ? ('Ada ' . $newCount . ' tiket Anda masih Open')
+                    : ($role === 'agent'
+                        ? ('Ada ' . $newCount . ' tiket belum diselesaikan')
+                        : ('Ada ' . $newCount . ' tiket open belum ditugaskan')
+                    ),
             ]);
         }
     }
@@ -387,7 +446,15 @@ Route::get('/dashboard', function () {
         'adminTechnicianStatusLabels',
         'adminTechnicianStatusValues',
         'adminTechnicianLevelLabels',
-        'adminTechnicianLevelValues'
+        'adminTechnicianLevelValues',
+        'agentStatusLabels',
+        'agentStatusValues',
+        'agentPriorityLabels',
+        'agentPriorityValues',
+        'customerStatusLabels',
+        'customerStatusValues',
+        'customerPriorityLabels',
+        'customerPriorityValues'
     ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -507,6 +574,10 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
     Route::patch('/admin/users/{user}/role', [\App\Http\Controllers\Admin\UserController::class, 'updateRole'])->name('admin.users.updateRole');
 
+    // Exports for users (CSV/PDF/Print)
+    Route::get('/admin/users/export/csv', [\App\Http\Controllers\Admin\UserController::class, 'exportCsv'])->name('admin.users.exportCsv');
+    Route::get('/admin/users/export/pdf', [\App\Http\Controllers\Admin\UserController::class, 'exportPdf'])->name('admin.users.exportPdf');
+
     // ===== CATEGORY MANAGEMENT ROUTES =====
     // Admin bisa kelola kategori tickets (create, edit, delete)
     Route::get('/admin/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'index'])->name('admin.categories.index');
@@ -515,6 +586,16 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::get('/admin/categories/{category}/edit', [\App\Http\Controllers\Admin\CategoryController::class, 'edit'])->name('admin.categories.edit');
     Route::put('/admin/categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'update'])->name('admin.categories.update');
     Route::delete('/admin/categories/{category}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy'])->name('admin.categories.destroy');
+
+    // Category exports
+    Route::get('/admin/categories/export/csv', [\App\Http\Controllers\Admin\CategoryController::class, 'exportCsv'])->name('admin.categories.exportCsv');
+    Route::get('/admin/categories/export/pdf', [\App\Http\Controllers\Admin\CategoryController::class, 'exportPdf'])->name('admin.categories.exportPdf');
+
+    // Super Admin Ticket Report (placeholder)
+    Route::get('/admin/ticket-reports', [\App\Http\Controllers\Admin\ReportController::class, 'superIndex'])->name('admin.ticketReports.index');
+    Route::get('/admin/ticket-reports/export/csv', [\App\Http\Controllers\Admin\ReportController::class, 'superExportCsv'])->name('admin.ticketReports.exportCsv');
+    Route::get('/admin/ticket-reports/export/pdf', [\App\Http\Controllers\Admin\ReportController::class, 'superExportPdf'])->name('admin.ticketReports.exportPdf');
+    Route::get('/admin/ticket-reports/print', [\App\Http\Controllers\Admin\ReportController::class, 'superPrint'])->name('admin.ticketReports.print');
 });
 
 // =================================================================

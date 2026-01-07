@@ -3,8 +3,8 @@
 @php
     $role = request('role');
     $isSuperAdmin = (auth()->user()->role ?? null) === 'super_admin';
-    $readOnly = $isSuperAdmin;
-    $allowCreate = !$readOnly || ($isSuperAdmin && $role === 'admin');
+    $readOnly = false; // Super Admin can manage users
+    $allowCreate = true;
     $pageTitleText = 'Manajemen Pengguna';
     $pageTitleHtml = '<i class="fa-solid fa-users me-2"></i>Manajemen Pengguna';
     $btnText = 'Tambah Pengguna';
@@ -83,10 +83,30 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">{!! $pageTitleHtml !!}</h1>
     <div class="d-flex gap-2 align-items-center" style="min-width: 320px;">
+        <form method="GET" action="{{ route('admin.users.index') }}" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="role" value="{{ request('role') }}" />
+            <select name="category_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
+                <option value="">Semua Jobdesk</option>
+                @foreach(($categories ?? collect()) as $cat)
+                    <option value="{{ $cat->id }}" @selected((string)request('category_id') === (string)$cat->id)>{{ $cat->name }}</option>
+                @endforeach
+            </select>
+        </form>
         <div class="input-group" style="max-width: 360px;">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
             <input id="user-search" type="text" class="form-control" placeholder="Cari nama / email..." autocomplete="off">
             <button class="btn btn-outline-secondary" type="button" id="user-search-clear" title="Clear">Clear</button>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ route('admin.users.exportPdf', ['role' => request('role'), 'category_id' => request('category_id')]) }}" class="btn btn-sm btn-warning text-dark" title="Download" download>
+                <i class="fa-solid fa-download me-1"></i>Download
+            </a>
+            <a href="{{ route('admin.users.exportCsv', ['role' => request('role'), 'category_id' => request('category_id')]) }}" class="btn btn-sm btn-success" title="Export CSV">
+                <i class="fa-solid fa-file-csv me-1"></i>CSV
+            </a>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-users-print" title="Cetak/PDF">
+                <i class="fa-solid fa-print me-1"></i>PDF/Cetak
+            </button>
         </div>
         @if($allowCreate)
             <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary">{{ $btnText }}</a>
@@ -104,6 +124,9 @@
                     <th>Email</th>
                     @if($role === 'admin')
                         <th>Jobdesk</th>
+                    @elseif($role === 'agent')
+                        <th>Jobdesk</th>
+                        <th>Level</th>
                     @endif
                     <th>Peran</th>
                     @if(!$readOnly)
@@ -129,11 +152,15 @@
                             <td>{{ $u->email }}</td>
                             @if($role === 'admin')
                                 <td>{{ $u->category->name ?? '-' }}</td>
+                            @elseif($role === 'agent')
+                                <td>{{ $u->category->name ?? '-' }}</td>
+                                <td>{{ $u->availability_status ?? '-' }}</td>
                             @endif
                             <td><span class="badge text-bg-secondary">{{ $u->role }}</span></td>
                             @if(!$readOnly)
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
+                                        <a href="{{ route('admin.users.show', $u) }}" class="btn btn-sm btn-outline-secondary">Lihat</a>
                                         <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">Ubah</a>
                                         <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.users.destroy', $u) }}?role={{ request('role') }}', '{{ $u->name }}')">Hapus</button>
                                     </div>
@@ -213,5 +240,30 @@ function confirmDelete(url, userName) {
         }
     });
 }
+
+document.getElementById('btn-users-print')?.addEventListener('click', function() {
+    const printUrl = '{{ route('admin.users.exportPdf', ['role' => request('role'), 'category_id' => request('category_id')]) }}';
+    Swal.fire({
+        title: 'Cetak Laporan Pengguna?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Cetak',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = printUrl;
+            document.body.appendChild(iframe);
+            iframe.onload = function() {
+                iframe.focus();
+                iframe.contentWindow.print();
+            };
+        }
+    });
+});
 </script>
 @endsection

@@ -22,9 +22,82 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
-        $users = $query->orderBy('name')->paginate(20);
+        // Filter berdasarkan kategori/jobdesk jika ada ?category_id=
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->integer('category_id'));
+        }
 
-        return view('admin.users.index', compact('users'));
+        $users = $query->orderBy('name')->paginate(20)->appends($request->only(['role', 'category_id']));
+        $categories = Category::orderBy('name')->get();
+
+        return view('admin.users.index', compact('users', 'categories'));
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $query = User::query()->with('category');
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->integer('category_id'));
+        }
+
+        $rows = $query->orderBy('name')->get();
+        $role = $request->string('role', 'all');
+
+        $headers = ['No', 'Nama', 'Email', 'Peran'];
+        if ($role === 'admin') {
+            $headers = array_merge($headers, ['Jobdesk']);
+        } elseif ($role === 'agent') {
+            $headers = array_merge($headers, ['Jobdesk', 'Level']);
+        } elseif ($role === 'customer') {
+            $headers = array_merge($headers, ['Kategori', 'Agent']);
+        }
+
+        $lines = [];
+        $lines[] = implode(',', array_map(fn($h) => '"' . str_replace('"', '""', $h) . '"', $headers));
+        $i = 1;
+        foreach ($rows as $u) {
+            $base = [
+                $i++,
+                $u->name,
+                $u->email,
+                $u->role,
+            ];
+            if ($role === 'admin') {
+                $base[] = $u->category->name ?? '-';
+            } elseif ($role === 'agent') {
+                $base[] = $u->category->name ?? '-';
+                $base[] = $u->availability_status ?? '-';
+            } elseif ($role === 'customer') {
+                $base[] = $u->category->name ?? '-';
+                $base[] = '-';
+            }
+            $lines[] = implode(',', array_map(fn($v) => '"' . str_replace('"', '""', (string)$v) . '"', $base));
+        }
+
+        $csv = implode("\r\n", $lines) . "\r\n";
+        $fileName = 'users_' . ($role ?: 'all') . '_' . date('Ymd_His') . '.csv';
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"'
+        ]);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $query = User::query()->with('category');
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->integer('category_id'));
+        }
+        $users = $query->orderBy('name')->get();
+        $role = (string) $request->string('role', 'all');
+
+        return view('admin.users.export', compact('users', 'role'));
     }
 
     public function create(Request $request)
@@ -91,18 +164,12 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        if ((Auth::user()->role ?? null) === 'super_admin') {
-            abort(403, 'Read-only');
-        }
         $categories = Category::orderBy('name')->get();
         return view('admin.users.edit', compact('user', 'categories'));
     }
 
     public function update(Request $request, User $user, UserService $userService)
     {
-        if ((Auth::user()->role ?? null) === 'super_admin') {
-            abort(403, 'Read-only');
-        }
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
@@ -148,9 +215,6 @@ class UserController extends Controller
 
     public function destroy(User $user, UserService $userService)
     {
-        if ((Auth::user()->role ?? null) === 'super_admin') {
-            abort(403, 'Read-only');
-        }
         // Delete Firestore doc (best-effort)
         try {
             $userService->deleteByLaravelId((string)$user->id);
@@ -166,9 +230,6 @@ class UserController extends Controller
 
     public function updateRole(Request $request, User $user)
     {
-        if ((Auth::user()->role ?? null) === 'super_admin') {
-            abort(403, 'Read-only');
-        }
         $request->validate([
             'role' => 'required|in:admin,agent,customer',
         ]);

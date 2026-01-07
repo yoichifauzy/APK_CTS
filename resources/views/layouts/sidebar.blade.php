@@ -597,6 +597,12 @@
                             <span>Kategori</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('admin.ticketReports.index') }}" class="nav-link {{ request()->routeIs('admin.ticketReports.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Laporan Tiket</span>
+                        </a>
+                    </li>
                 @endif
 
                 @if(auth()->user()->role === 'admin')
@@ -828,6 +834,7 @@
                 if (!window.bootstrap || !bootstrap.Toast) return;
 
                 const userRole = @json(auth()->user()->role ?? null);
+                const userId = @json(auth()->user()->id ?? null);
                 const isAdminRole = (userRole === 'admin' || userRole === 'super_admin');
 
                 const pollUrl = "{{ route('notifications.poll') }}";
@@ -884,7 +891,7 @@
                     }
                 }
 
-                function showToast(type, title, message, soundKey) {
+                function showToast(type, title, message, soundKey, eventKey) {
                     const container = ensureToastContainer();
                     const bg = toastBg(type);
                     const el = document.createElement('div');
@@ -904,11 +911,19 @@
                         '</div>';
 
                     container.appendChild(el);
-                    new bootstrap.Toast(el).show();
+                    const bsToast = new bootstrap.Toast(el);
+                    bsToast.show();
                     playSound(soundKey);
 
                     el.addEventListener('hidden.bs.toast', function () {
                         try { el.remove(); } catch (e) {}
+                        // If user manually closed a summary toast, suppress it for this login/session
+                        if (eventKey && typeof eventKey === 'string' && userId) {
+                            if (eventKey === 'admin_open_summary' || eventKey === 'customer_open_summary' || eventKey === 'agent_open_summary') {
+                                const k = 'ct_summary_dismiss_' + eventKey + '_' + userId;
+                                try { sessionStorage.setItem(k, '1'); } catch (e) {}
+                            }
+                        }
                     });
                 }
 
@@ -949,7 +964,7 @@
 
                     const statusMap = loadJson(statusMapKey, {});
                     const newUnassignedNotified = loadJson(newUnassignedKey, {});
-                    const soundKeys = [];
+                    const displayItems = [];
 
                     for (const it of items) {
                         let soundKey = null;
@@ -980,19 +995,29 @@
                             }
                         }
 
-                        soundKeys.push(soundKey);
+                        // Suppress summary toasts if user already closed them this session
+                        if (event === 'admin_open_summary' || event === 'customer_open_summary' || event === 'agent_open_summary') {
+                            const suppressKey = 'ct_summary_dismiss_' + event + '_' + userId;
+                            try {
+                                if (sessionStorage.getItem(suppressKey)) {
+                                    continue;
+                                }
+                            } catch (e) {}
+                        }
+
+                        displayItems.push({ item: it, soundKey, event });
                     }
 
                     saveJson(statusMapKey, statusMap);
                     saveJson(newUnassignedKey, newUnassignedNotified);
 
-                    const showItems = items.slice(0, maxToastsPerPoll);
+                    const showItems = displayItems.slice(0, maxToastsPerPoll);
                     for (let i = 0; i < showItems.length; i++) {
-                        const it = showItems[i];
-                        showToast(it.type || 'info', it.title || 'Notifikasi', it.message || '', soundKeys[i]);
+                        const { item: it, soundKey, event } = showItems[i];
+                        showToast(it.type || 'info', it.title || 'Notifikasi', it.message || '', soundKey, event);
                     }
-                    if (items.length > maxToastsPerPoll) {
-                        showToast('info', 'Notifikasi', 'Dan ' + (items.length - maxToastsPerPoll) + ' lainnya', null);
+                    if (displayItems.length > maxToastsPerPoll) {
+                        showToast('info', 'Notifikasi', 'Dan ' + (displayItems.length - maxToastsPerPoll) + ' lainnya', null, null);
                     }
                 }
 
