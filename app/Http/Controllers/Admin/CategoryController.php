@@ -11,7 +11,7 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::orderBy('name')->paginate(20);
+        $categories = Category::orderByDesc('created_at')->paginate(20);
 
         // Count Admins and Agents per category for current page
         $ids = $categories->pluck('id')->filter()->values();
@@ -78,7 +78,7 @@ class CategoryController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $rows = Category::orderBy('name')->get();
+        $rows = Category::orderByDesc('created_at')->get();
         $ids = $rows->pluck('id')->values();
         $roleCounts = \App\Models\User::query()
             ->whereIn('category_id', $ids)
@@ -116,7 +116,7 @@ class CategoryController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::orderByDesc('created_at')->get();
         $ids = $categories->pluck('id')->values();
         $roleCounts = \App\Models\User::query()
             ->whereIn('category_id', $ids)

@@ -27,7 +27,7 @@ class UserController extends Controller
             $query->where('category_id', $request->integer('category_id'));
         }
 
-        $users = $query->orderBy('name')->paginate(20)->appends($request->only(['role', 'category_id']));
+        $users = $query->orderByDesc('created_at')->paginate(20)->appends($request->only(['role', 'category_id']));
         $categories = Category::orderBy('name')->get();
 
         return view('admin.users.index', compact('users', 'categories'));
@@ -43,7 +43,7 @@ class UserController extends Controller
             $query->where('category_id', $request->integer('category_id'));
         }
 
-        $rows = $query->orderBy('name')->get();
+        $rows = $query->orderByDesc('created_at')->get();
         $role = $request->string('role', 'all');
 
         $headers = ['No', 'Nama', 'Email', 'Peran'];
@@ -94,7 +94,7 @@ class UserController extends Controller
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
         }
-        $users = $query->orderBy('name')->get();
+        $users = $query->orderByDesc('created_at')->get();
         $role = (string) $request->string('role', 'all');
 
         return view('admin.users.export', compact('users', 'role'));

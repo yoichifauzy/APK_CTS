@@ -233,6 +233,18 @@ function confirmDelete(url, userName) {
         },
         buttonsStyling: false
     }).then((result) => {
+
+@if(session('success'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: 'Berhasil',
+        text: '{{ addslashes(session('success')) }}',
+        icon: 'success',
+        confirmButtonColor: '#16a34a',
+        confirmButtonText: 'OK'
+    });
+});
+@endif
         if (result.isConfirmed) {
             const form = document.getElementById('deleteForm');
             form.action = url;
