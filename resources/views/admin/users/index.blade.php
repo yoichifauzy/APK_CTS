@@ -363,6 +363,7 @@ document.getElementById('btn-users-print')?.addEventListener('click', function()
     }
 
     window.addEventListener('ctm:echo-ready', subscribe);
+    window.addEventListener('ctm:categories-changed', refreshUsersIndex);
     document.addEventListener('DOMContentLoaded', function(){
         if (window.Echo) subscribe();
     });

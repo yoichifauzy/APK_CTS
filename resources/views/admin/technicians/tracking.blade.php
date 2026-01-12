@@ -68,46 +68,62 @@
                         <th>Tracking Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach($agents as $agent)
-                        @php
-                            $cur = $workStatus[$agent->id] ?? 'open';
-                            // If agent has no active ticket, we treat it as Open (belum ada kerjaan)
-                            $curIndex = array_search($cur, $flow, true);
-                            if ($curIndex === false) { $curIndex = 0; }
-                        @endphp
-                        <tr>
-                            <td>{{ $loop->iteration }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $agent->name }}</div>
-                                <div class="text-muted small">{{ $agent->email }}</div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
-                                    @foreach($flow as $idx => $st)
-                                        @php
-                                            $isReached = $idx <= $curIndex;
-                                            $cls = $isReached ? ('text-bg-' . ($colors[$st] ?? 'secondary')) : 'text-bg-light text-dark';
-                                        @endphp
-                                        <span class="badge {{ $cls }}">
-                                            {{ $labels[$st] ?? strtoupper($st) }}
-                                            @if($st === 'open' && $cur === 'open')
-                                                <span class="ms-1">(belum ada kerjaan)</span>
-                                            @endif
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                    @if($agents->count() === 0)
-                        <tr>
-                            <td colspan="3" class="text-center text-muted py-4">Belum ada teknisi pada jobdesk ini.</td>
-                        </tr>
-                    @endif
+                <tbody id="tracking-tbody">
+                    @include('admin.technicians._tracking_rows', ['agents' => $agents, 'workStatus' => $workStatus])
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+(function(){
+    const tbody = document.getElementById('tracking-tbody');
+    const partialUrl = @json(route('admin.technicians.trackingPartial'));
+    const categoryId = window.__ctm?.categoryId;
+    if (!tbody || !partialUrl || !categoryId) return;
+
+    async function refreshTracking(){
+        try {
+            const url = new URL(partialUrl, window.location.origin);
+            const current = new URL(window.location.href);
+            ['q', 'level', 'status'].forEach(k => {
+                const v = current.searchParams.get(k);
+                if (v !== null) url.searchParams.set(k, v);
+            });
+
+            const res = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                cache: 'no-store'
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && typeof data.rowsHtml === 'string') {
+                tbody.innerHTML = data.rowsHtml;
+            }
+        } catch (e) {
+            // silent
+        }
+    }
+
+    function subscribe(){
+        if (!window.Echo || !window.Echo.private) return false;
+        const ch = window.Echo.private('category.' + categoryId);
+        ch.listen('.users.changed', refreshTracking);
+        ch.listen('.tickets.changed', refreshTracking);
+        return true;
+    }
+
+    window.addEventListener('ctm:echo-ready', subscribe);
+    document.addEventListener('DOMContentLoaded', function(){
+        if (window.Echo) subscribe();
+    });
+})();
+</script>
 @endsection

@@ -612,6 +612,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'index'])->name('admin.technicians.index');
     Route::get('/admin/technicians/partial', [\App\Http\Controllers\Admin\TechnicianController::class, 'partial'])->name('admin.technicians.partial');
     Route::get('/admin/technicians/tracking', [\App\Http\Controllers\Admin\TechnicianController::class, 'tracking'])->name('admin.technicians.tracking');
+    Route::get('/admin/technicians/tracking/partial', [\App\Http\Controllers\Admin\TechnicianController::class, 'trackingPartial'])->name('admin.technicians.trackingPartial');
     Route::get('/admin/technicians/create', [\App\Http\Controllers\Admin\TechnicianController::class, 'create'])->name('admin.technicians.create');
     Route::post('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'store'])->name('admin.technicians.store');
     Route::get('/admin/technicians/{user}/edit', [\App\Http\Controllers\Admin\TechnicianController::class, 'edit'])->name('admin.technicians.edit');

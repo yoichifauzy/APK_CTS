@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Events\TicketsChanged;
 use App\Services\Firebase\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -450,14 +451,23 @@ class TicketController extends Controller
         ]);
 
         // Record assigning admin in Laravel DB (best-effort)
+        $ticketCategoryId = null;
+        $ticketRowId = null;
         try {
             $ticketModel = Ticket::where('firebase_id', $id)->first();
             if ($ticketModel) {
                 $ticketModel->update(['assigned_by' => $user->id]);
+                $ticketCategoryId = (int) ($ticketModel->category_id ?? 0);
+                $ticketRowId = (int) ($ticketModel->id ?? 0);
             }
         } catch (\Throwable $e) {
             // ignore write failure
         }
+
+        // Broadcast for real-time tracking/list refresh
+        $catFromPayload = is_array($ticket) ? (int) ($ticket['category_id'] ?? 0) : 0;
+        $cat = $ticketCategoryId ?: $catFromPayload;
+        event(new TicketsChanged(categoryId: ($cat ?: null), ticketId: ($ticketRowId ?: null), action: 'assigned'));
 
         $ticketTitle = null;
         try {
@@ -583,6 +593,16 @@ class TicketController extends Controller
             'status' => $request->status,
         ]);
 
+        // Broadcast for real-time tracking/list refresh
+        try {
+            $ticketModel = Ticket::where('firebase_id', $id)->first();
+            if ($ticketModel) {
+                event(new TicketsChanged(categoryId: (int) ($ticketModel->category_id ?? 0), ticketId: (int) ($ticketModel->id ?? 0), action: 'status_updated'));
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
         $ticketTitle = null;
         try {
             $t = $this->ticketService->getTicket($id);
@@ -633,6 +653,15 @@ class TicketController extends Controller
         ]);
 
         $this->ticketService->updateTicket($id, ['status' => 'closed']);
+
+        try {
+            $ticketModel = Ticket::where('firebase_id', $id)->first();
+            if ($ticketModel) {
+                event(new TicketsChanged(categoryId: (int) ($ticketModel->category_id ?? 0), ticketId: (int) ($ticketModel->id ?? 0), action: 'customer_closed'));
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
 
         // Store close reason as a public comment (best-effort)
         $note = trim((string) ($validated['note'] ?? ''));

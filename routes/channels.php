@@ -59,3 +59,7 @@ Broadcast::channel('ticket.{ticketId}', function ($user, $ticketId) {
     // customer
     return (int) $ticket->customer_id === (int) ($user->id ?? 0);
 });
+
+Broadcast::channel('categories', function ($user) {
+    return (int) ($user->id ?? 0) > 0;
+});

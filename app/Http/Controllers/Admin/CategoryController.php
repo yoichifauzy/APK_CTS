@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Events\CategoriesChanged;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -47,7 +48,9 @@ class CategoryController extends Controller
         ]);
 
         $data['slug'] = Str::slug($data['name']);
-        Category::create($data);
+        $cat = Category::create($data);
+
+        event(new CategoriesChanged(categoryId: (int) $cat->id, action: 'created'));
 
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dibuat');
     }
@@ -67,12 +70,16 @@ class CategoryController extends Controller
         $data['slug'] = Str::slug($data['name']);
         $category->update($data);
 
+        event(new CategoriesChanged(categoryId: (int) $category->id, action: 'updated'));
+
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil diperbarui');
     }
 
     public function destroy(Category $category)
     {
+        $id = (int) $category->id;
         $category->delete();
+        event(new CategoriesChanged(categoryId: $id, action: 'deleted'));
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dihapus');
     }
 

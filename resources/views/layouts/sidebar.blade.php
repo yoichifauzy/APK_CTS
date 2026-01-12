@@ -703,11 +703,11 @@
                         }
                     @endphp
                     @if(in_array(auth()->user()->role ?? null, ['admin','agent'], true))
-                        <span class="badge text-bg-light text-dark" title="Jobdesk/Kategori">
+                        <span class="badge text-bg-light text-dark" title="Jobdesk/Kategori" id="topbar-jobdesk-badge">
                             <i class="fa-solid fa-tags me-1"></i>
                             {{ (auth()->user()->role ?? '') === 'admin' ? 'Admin' : 'Teknisi' }}
                             @if(!empty($jobdesk ?? null))
-                                — {{ $jobdesk ?? '' }}
+                                — <span id="topbar-jobdesk-name">{{ $jobdesk ?? '' }}</span>
                             @endif
                         </span>
                     @endif
@@ -864,6 +864,12 @@
                         if (!res.ok) return;
                         const data = await res.json();
 
+                        // Update jobdesk/kategori label
+                        if (data && typeof data.categoryName === 'string') {
+                            const nameEl = document.getElementById('topbar-jobdesk-name');
+                            if (nameEl) nameEl.textContent = data.categoryName;
+                        }
+
                         // Update sidebar badges
                         setBadge('sidebar-open-badge', 'sidebar-open-count', data.openTicketsCount, data.showOpenBadge);
                         setBadge('sidebar-unread-badge', 'sidebar-unread-count', data.unreadDiscussionCount, true);
@@ -898,6 +904,29 @@
 
                 // Initial fetch
                 refreshLiveSummary();
+            })();
+        </script>
+    @endauth
+
+    @auth
+        <script>
+            (function(){
+                function subscribe(){
+                    if (!window.Echo || !window.Echo.private) return false;
+                    window.Echo.private('categories')
+                        .listen('.categories.changed', function(){
+                            if (window.CTMLive && typeof window.CTMLive.refreshLiveSummary === 'function') {
+                                window.CTMLive.refreshLiveSummary();
+                            }
+                            try { window.dispatchEvent(new Event('ctm:categories-changed')); } catch (e) {}
+                        });
+                    return true;
+                }
+
+                window.addEventListener('ctm:echo-ready', subscribe);
+                document.addEventListener('DOMContentLoaded', function(){
+                    if (window.Echo) subscribe();
+                });
             })();
         </script>
     @endauth

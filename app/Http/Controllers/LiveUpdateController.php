@@ -18,6 +18,15 @@ class LiveUpdateController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
+        $categoryName = null;
+        if (in_array($user->role, ['admin', 'agent'], true)) {
+            try {
+                $categoryName = optional($user->loadMissing('category')->category)->name;
+            } catch (\Throwable $e) {
+                $categoryName = null;
+            }
+        }
+
         // Sidebar counts (same semantics as AppServiceProvider)
         $openTicketsCount = 0;
         $showOpenBadge = in_array($user->role, ['admin', 'customer'], true);
@@ -93,6 +102,7 @@ class LiveUpdateController extends Controller
             'serverTime' => now()->toISOString(),
             'role' => $user->role,
             'userId' => (int) $user->id,
+            'categoryName' => $categoryName,
             'showOpenBadge' => $showOpenBadge,
             'openTicketsCount' => (int) $openTicketsCount,
             'unreadDiscussionCount' => (int) $unreadDiscussionCount,

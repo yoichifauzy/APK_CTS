@@ -13,6 +13,64 @@ use Illuminate\Support\Facades\Hash;
 
 class TechnicianController extends Controller
 {
+    private function buildTrackingData(Request $request): array
+    {
+        /** @var User $admin */
+        $admin = Auth::user();
+
+        $query = User::query()
+            ->where('role', 'agent')
+            ->orderByDesc('created_at');
+
+        if ($admin->category_id) {
+            $query->where('category_id', $admin->category_id);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            $query->where(function ($inner) use ($q) {
+                $inner->where('name', 'like', '%' . $q . '%')
+                    ->orWhere('email', 'like', '%' . $q . '%');
+            });
+        }
+
+        $level = $request->query('level');
+        if (in_array($level, ['junior', 'intermediate', 'expert'], true)) {
+            $query->where('availability_status', $level);
+        }
+
+        $agents = $query->get();
+        $agentIds = $agents->pluck('id')->all();
+
+        $workStatus = [];
+        if (count($agentIds) > 0) {
+            $tickets = \App\Models\Ticket::query()
+                ->whereIn('agent_id', $agentIds)
+                ->whereNotIn('status', ['resolved', 'closed'])
+                ->orderBy('updated_at', 'desc')
+                ->get(['agent_id', 'status']);
+
+            foreach ($tickets as $t) {
+                $aid = (int) $t->agent_id;
+                if (!isset($workStatus[$aid])) {
+                    $workStatus[$aid] = (string) $t->status;
+                }
+            }
+        }
+
+        $status = trim((string) $request->query('status', ''));
+        if (in_array($status, ['open', 'assigned', 'in_progress', 'resolved'], true)) {
+            $agents = $agents->filter(function ($agent) use ($workStatus, $status) {
+                $cur = $workStatus[$agent->id] ?? 'open';
+                return (string) $cur === (string) $status;
+            })->values();
+        }
+
+        return [$agents, $workStatus, $q, $level, $status];
+    }
+
     public function partial(Request $request)
     {
         /** @var User $admin */
@@ -20,7 +78,7 @@ class TechnicianController extends Controller
 
         $query = User::query()
             ->where('role', 'agent')
-            ->orderBy('name');
+            ->orderByDesc('created_at');
 
         if ($admin->category_id) {
             $query->where('category_id', $admin->category_id);
@@ -48,7 +106,7 @@ class TechnicianController extends Controller
 
         $query = User::query()
             ->where('role', 'agent')
-            ->orderBy('name');
+            ->orderByDesc('created_at');
 
         if ($admin->category_id) {
             $query->where('category_id', $admin->category_id);
@@ -69,63 +127,18 @@ class TechnicianController extends Controller
 
     public function tracking(Request $request)
     {
-        /** @var User $admin */
-        $admin = Auth::user();
-
-        $query = User::query()
-            ->where('role', 'agent')
-            ->orderBy('name');
-
-        if ($admin->category_id) {
-            $query->where('category_id', $admin->category_id);
-        } else {
-            $query->whereRaw('1 = 0');
-        }
-
-        $q = trim((string) $request->query('q', ''));
-        if ($q !== '') {
-            $query->where(function ($inner) use ($q) {
-                $inner->where('name', 'like', '%' . $q . '%')
-                    ->orWhere('email', 'like', '%' . $q . '%');
-            });
-        }
-
-        $level = $request->query('level');
-        if (in_array($level, ['junior', 'intermediate', 'expert'], true)) {
-            $query->where('availability_status', $level);
-        }
-
-        $agents = $query->get();
-        $agentIds = $agents->pluck('id')->all();
-
-        // Current workload status per agent:
-        // - If has any ticket status not finished (exclude resolved/closed) => use latest updated ticket status
-        // - Else treat as Open (belum ada kerjaan)
-        $workStatus = [];
-        if (count($agentIds) > 0) {
-            $tickets = \App\Models\Ticket::query()
-                ->whereIn('agent_id', $agentIds)
-                ->whereNotIn('status', ['resolved', 'closed'])
-                ->orderBy('updated_at', 'desc')
-                ->get(['agent_id', 'status']);
-
-            foreach ($tickets as $t) {
-                $aid = (int) $t->agent_id;
-                if (!isset($workStatus[$aid])) {
-                    $workStatus[$aid] = (string) $t->status;
-                }
-            }
-        }
-
-        $status = trim((string) $request->query('status', ''));
-        if (in_array($status, ['open', 'assigned', 'in_progress', 'resolved'], true)) {
-            $agents = $agents->filter(function ($agent) use ($workStatus, $status) {
-                $cur = $workStatus[$agent->id] ?? 'open';
-                return (string) $cur === (string) $status;
-            })->values();
-        }
+        [$agents, $workStatus, $q, $level, $status] = $this->buildTrackingData($request);
 
         return view('admin.technicians.tracking', compact('agents', 'workStatus', 'q', 'level', 'status'));
+    }
+
+    public function trackingPartial(Request $request)
+    {
+        [$agents, $workStatus] = $this->buildTrackingData($request);
+
+        return response()->json([
+            'rowsHtml' => view('admin.technicians._tracking_rows', compact('agents', 'workStatus'))->render(),
+        ]);
     }
 
     public function create()
