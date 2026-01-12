@@ -15,6 +15,71 @@ class TicketDiscussionController extends Controller
 {
     public function __construct(private readonly TicketService $ticketService) {}
 
+    public function partial(string $ticket)
+    {
+        $ticketData = $this->ticketService->getTicket($ticket);
+        if (!$ticketData) {
+            abort(404);
+        }
+
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Authorization by role (same as show)
+        if ($user->role === 'customer') {
+            if ((string) ($ticketData['customer_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
+        } elseif ($user->role === 'agent') {
+            if ((string) ($ticketData['agent_id'] ?? '') !== (string) $user->id) {
+                abort(403);
+            }
+        } elseif ($user->role === 'admin') {
+            if (!$user->category_id || (int) ($ticketData['category_id'] ?? 0) !== (int) $user->category_id) {
+                abort(403);
+            }
+        } elseif ($user->role !== 'super_admin') {
+            abort(403);
+        }
+
+        $comments = $this->ticketService->getComments($ticket);
+
+        // Mark as read (best-effort)
+        try {
+            $ticketRowId = Ticket::query()->where('firebase_id', $ticket)->value('id');
+            if ($ticketRowId) {
+                TicketDiscussionRead::updateOrCreate(
+                    ['ticket_id' => (int) $ticketRowId, 'user_id' => (int) $user->id],
+                    ['last_read_at' => now()]
+                );
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        // Generate temporary URLs for attachments that may be present in comments
+        if (isset($comments) && is_array($comments)) {
+            foreach ($comments as &$c) {
+                if (isset($c['attachments']) && is_array($c['attachments'])) {
+                    foreach ($c['attachments'] as &$attc) {
+                        if (isset($attc['path']) && is_string($attc['path'])) {
+                            $attc['temp_url'] = $this->ticketService->getAttachmentTemporaryUrl($ticket, $attc['path']);
+                        }
+                    }
+                }
+            }
+            unset($c, $attc);
+        }
+
+        return response()->json([
+            'count' => isset($comments) && is_array($comments) ? count($comments) : 0,
+            'chatHtml' => view('discussions._chat', ['comments' => $comments])->render(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         /** @var User|null $user */

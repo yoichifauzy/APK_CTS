@@ -737,6 +737,7 @@ Route::get('/notifications/poll', [\App\Http\Controllers\NotificationController:
 Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {
     Route::get('/diskusi', [TicketDiscussionController::class, 'index'])->name('discussions.index');
     Route::get('/diskusi/{ticket}', [TicketDiscussionController::class, 'show'])->name('discussions.show');
+    Route::get('/diskusi/{ticket}/partial', [TicketDiscussionController::class, 'partial'])->name('discussions.partial');
 });
 
 Route::middleware(['auth', 'role:customer,admin,agent'])->group(function () {

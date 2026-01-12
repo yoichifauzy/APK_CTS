@@ -37,7 +37,13 @@ Broadcast::channel('category.{categoryId}', function ($user, $categoryId) {
 
 Broadcast::channel('ticket.{ticketId}', function ($user, $ticketId) {
     /** @var \App\Models\Ticket|null $ticket */
-    $ticket = Ticket::query()->find($ticketId);
+    $ticket = null;
+    if (is_numeric($ticketId)) {
+        $ticket = Ticket::query()->find((int) $ticketId);
+    }
+    if (!$ticket) {
+        $ticket = Ticket::query()->where('firebase_id', (string) $ticketId)->first();
+    }
     if (!$ticket) {
         return false;
     }

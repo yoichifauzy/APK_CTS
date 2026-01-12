@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TicketCommentsChanged;
 use App\Models\User;
 use App\Services\Firebase\TicketService;
 use Illuminate\Http\Request;
@@ -76,6 +77,8 @@ class TicketCommentController extends Controller
             'comment' => $request->string('message')->toString(), // Form field: 'message', DB field: 'comment'
             'attachments' => $uploaded,
         ]);
+
+        event(new TicketCommentsChanged(ticketId: (string) $ticket, action: 'created', userId: (int) $user->id));
 
         $redirectTo = $request->input('redirect_to');
         if (is_string($redirectTo) && $redirectTo !== '') {

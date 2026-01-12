@@ -80,7 +80,7 @@ class CategoryController extends Controller
         $id = (int) $category->id;
         $category->delete();
         event(new CategoriesChanged(categoryId: $id, action: 'deleted'));
-        return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dihapus');
+        return redirect()->route('admin.categories.index')->with('deleted_success', 'Kategori berhasil dihapus');
     }
 
     public function exportCsv(Request $request)

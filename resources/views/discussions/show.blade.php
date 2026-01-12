@@ -66,82 +66,12 @@
     <div class="panel">
         <div class="panel-header d-flex align-items-center gap-2">
             <span><i class="fa-solid fa-comments me-2"></i>Komentar & Diskusi</span>
-            <span class="badge bg-secondary ms-auto">{{ isset($comments) && is_array($comments) ? count($comments) : 0 }}</span>
+            <span class="badge bg-secondary ms-auto" id="discussion-count">{{ isset($comments) && is_array($comments) ? count($comments) : 0 }}</span>
         </div>
         <div class="p-3">
-            @if(isset($comments) && is_array($comments) && count($comments) > 0)
-                <div class="mb-4">
-                    <div class="chat-list">
-                        @foreach($comments as $c)
-                            @php
-                                $authUser = auth()->user();
-                                $commentUserId = $c['user_id'] ?? null;
-                                $isMine = false;
-                                if (!is_null($commentUserId)) {
-                                    $isMine = (string)$commentUserId === (string)($authUser->id ?? '');
-                                } else {
-                                    $isMine = ($c['user_name'] ?? '') === ($authUser->name ?? '') && ($c['user_role'] ?? '') === ($authUser->role ?? '');
-                                }
-                            @endphp
-
-                            <div class="chat-row {{ $isMine ? 'me' : 'other' }}">
-                                @if(!$isMine)
-                                    <div class="chat-avatar">{{ strtoupper(substr($c['user_name'] ?? 'U',0,1)) }}</div>
-                                @endif
-
-                                <div class="chat-bubble">
-                                    <div class="chat-meta">
-                                        <div>
-                                            <span class="chat-name">{{ $c['user_name'] ?? 'User' }}</span>
-                                            @if(isset($c['user_role']))
-                                                @if($c['user_role'] === 'admin')
-                                                    <span class="badge bg-danger badge-role ms-1">Admin</span>
-                                                @elseif($c['user_role'] === 'agent')
-                                                    <span class="badge bg-warning text-dark badge-role ms-1">Agent</span>
-                                                @else
-                                                    <span class="badge bg-success badge-role ms-1">Customer</span>
-                                                @endif
-                                            @endif
-                                        </div>
-                                        <div class="chat-time">{{ $c['created_at_iso'] ?? '' }}</div>
-                                    </div>
-
-                                    <div class="chat-text">{{ $c['comment'] ?? $c['message'] ?? '(tidak ada komentar)' }}</div>
-
-                                    @if(isset($c['attachments']) && is_array($c['attachments']) && count($c['attachments']) > 0)
-                                        <div class="mt-2">
-                                            <div class="small fw-semibold text-muted">Bukti / Lampiran</div>
-                                            <div class="list-group list-group-flush mt-1">
-                                                @foreach($c['attachments'] as $attc)
-                                                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                                                        <div class="text-truncate" style="max-width:70%">{{ $attc['name'] ?? basename($attc['path'] ?? 'file') }}</div>
-                                                        <div>
-                                                            @if(!empty($attc['temp_url']))
-                                                                <a class="btn btn-sm btn-outline-primary" href="{{ $attc['temp_url'] }}" target="_blank" rel="noopener">Download</a>
-                                                            @else
-                                                                <span class="text-muted small">(URL tidak tersedia)</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                @if($isMine)
-                                    <div class="chat-avatar">{{ strtoupper(substr($c['user_name'] ?? 'U',0,1)) }}</div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @else
-                <div class="alert alert-info mb-3">
-                    <strong><i class="fa-solid fa-circle-info me-2"></i>Belum ada komentar.</strong><br>
-                    Jadilah yang pertama memberikan update atau pertanyaan!
-                </div>
-            @endif
+            <div class="mb-4" id="discussion-chat">
+                @include('discussions._chat', ['comments' => $comments])
+            </div>
 
             <div class="border-top pt-3">
                 <form method="POST" enctype="multipart/form-data" action="{{ route('tickets.comments.store', $ticket['id']) }}">
@@ -196,6 +126,64 @@
             }
             hint.style.display = '';
             hint.textContent = files.length + ' file dipilih';
+        });
+    })();
+
+    (function(){
+        const ticketId = @json((string)($ticket['id'] ?? ''));
+        const container = document.getElementById('discussion-chat');
+        const countEl = document.getElementById('discussion-count');
+        if (!ticketId || !container) return;
+
+        const partialUrl = @json(route('discussions.partial', ['ticket' => (string)($ticket['id'] ?? '')]));
+
+        function scrollToBottom(){
+            try {
+                const panelBody = container.closest('.panel')?.querySelector('.p-3');
+                if (panelBody) {
+                    panelBody.scrollTop = panelBody.scrollHeight;
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        async function refreshChat(){
+            try {
+                const res = await fetch(partialUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    cache: 'no-store'
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && typeof data.chatHtml === 'string') {
+                    container.innerHTML = data.chatHtml;
+                }
+                if (countEl && data && typeof data.count !== 'undefined') {
+                    countEl.textContent = String(data.count);
+                }
+                scrollToBottom();
+            } catch (e) {
+                // silent
+            }
+        }
+
+        function subscribe(){
+            if (!window.Echo || !window.Echo.private) return false;
+            window.Echo.private('ticket.' + ticketId)
+                .listen('.ticket.comments.changed', function(){
+                    refreshChat();
+                });
+            return true;
+        }
+
+        window.addEventListener('ctm:echo-ready', subscribe);
+        document.addEventListener('DOMContentLoaded', function(){
+            if (window.Echo) subscribe();
         });
     })();
 </script>

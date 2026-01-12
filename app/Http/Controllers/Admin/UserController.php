@@ -255,7 +255,7 @@ class UserController extends Controller
 
         // Redirect back to the management list for the same role as the deleted user
         event(new UsersChanged(role: $user->role, categoryId: $user->category_id, userId: $user->id, action: 'deleted'));
-        return redirect()->route('admin.users.index', ['role' => $user->role])->with('success', 'User berhasil dihapus');
+        return redirect()->route('admin.users.index', ['role' => $user->role])->with('deleted_success', 'User berhasil dihapus');
     }
 
     public function updateRole(Request $request, User $user)

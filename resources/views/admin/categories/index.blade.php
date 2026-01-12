@@ -145,6 +145,20 @@
 @section('scripts')
 <script>
 (function(){
+    @if(session('deleted_success'))
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            title: 'Berhasil',
+            text: '{{ addslashes(session('deleted_success')) }}',
+            icon: 'success',
+            confirmButtonColor: '#16a34a',
+            confirmButtonText: 'OK'
+        });
+    });
+    @endif
+})();
+
+(function(){
     const input = document.getElementById('category-search');
     const clearBtn = document.getElementById('category-search-clear');
     const table = document.querySelector('table');
