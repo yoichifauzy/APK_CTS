@@ -37,6 +37,12 @@
     .stat-icon { font-size: 1.8rem; }
     .stat-label { font-size: .9rem; letter-spacing: .02em; text-transform: uppercase; }
 
+    /* Customer charts: prevent canvas from stretching downward */
+    .customer-chart-box { position: relative; width: 100%; }
+    .customer-chart-box--bar { height: 220px; }
+    .customer-chart-box--donut { height: 260px; }
+    .customer-chart-box canvas { width: 100% !important; height: 100% !important; }
+
     /* Responsive dashboard */
     @media (max-width: 992px) {
         .col-lg-2 {
@@ -192,32 +198,32 @@
                     <hr class="my-4">
 
                     <div class="row g-3">
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-3 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Jumlah Status Semua Ticket</h6>
                                     <canvas id="adminTicketStatusChart" height="140"></canvas>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-3 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket</h6>
                                     <canvas id="adminTicketPriorityChart" height="140"></canvas>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-3 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Semua Status Teknisi</h6>
                                     <canvas id="adminTechnicianStatusChart" height="140"></canvas>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-3 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-pie me-2"></i>Semua Level Teknisi</h6>
                                     <canvas id="adminTechnicianLevelChart" height="140"></canvas>
@@ -256,20 +262,12 @@
                         </div>
                     @endif
 
-                    <hr class="my-4">
+                    <hr class="my-2">
                     <div class="row g-3">
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-lg-12 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
-                                    <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Status Ticket (Saya)</h6>
-                                    <canvas id="agentTicketStatusChart" height="140"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket (Saya)</h6>
+                                    <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Prioritas Ticket (Saya)</h6>
                                     <canvas id="agentTicketPriorityChart" height="140"></canvas>
                                 </div>
                             </div>
@@ -288,21 +286,25 @@
                         </a>
                     </div>
 
-                    <hr class="my-4">
+                    <hr class="my-2">
                     <div class="row g-3">
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-6 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-column me-2"></i>Status Ticket Saya</h6>
-                                    <canvas id="customerTicketStatusChart" height="140"></canvas>
+                                    <div class="customer-chart-box customer-chart-box--bar">
+                                        <canvas id="customerTicketStatusChart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="card">
+                        <div class="col-md-6 col-lg-6 d-flex">
+                            <div class="card w-100">
                                 <div class="card-body">
                                     <h6 class="mb-3"><i class="fa-solid fa-chart-line me-2"></i>Prioritas Ticket Saya</h6>
-                                    <canvas id="customerTicketPriorityChart" height="140"></canvas>
+                                    <div class="customer-chart-box customer-chart-box--donut">
+                                        <canvas id="customerTicketPriorityChart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -461,26 +463,15 @@
 
             // AGENT charts
             if (role === 'agent') {
-                const statusLabels = @json(($agentStatusLabels ?? collect())->values());
-                const statusValues = @json(($agentStatusValues ?? collect())->values());
                 const prioLabels = @json(($agentPriorityLabels ?? collect())->values());
                 const prioValues = @json(($agentPriorityValues ?? collect())->values());
-
-                const sEl = document.getElementById('agentTicketStatusChart');
-                if (sEl) {
-                    new Chart(sEl, {
-                        type: 'bar',
-                        data: { labels: statusLabels, datasets: [{ label: 'Tickets', data: statusValues, backgroundColor: 'rgba(13,110,253,0.25)', borderColor: 'rgba(13,110,253,0.9)', borderWidth: 1 }] },
-                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-                    });
-                }
 
                 const pEl = document.getElementById('agentTicketPriorityChart');
                 if (pEl) {
                     new Chart(pEl, {
-                        type: 'doughnut',
-                        data: { labels: prioLabels, datasets: [{ data: prioValues, backgroundColor: ['rgba(25,135,84,0.7)','rgba(255,193,7,0.7)','rgba(220,53,69,0.7)'], borderWidth: 0 }] },
-                        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                        type: 'bar',
+                        data: { labels: prioLabels, datasets: [{ label: 'Tickets', data: prioValues, backgroundColor: ['rgba(25,135,84,0.35)','rgba(255,193,7,0.35)','rgba(220,53,69,0.35)'], borderColor: ['rgba(25,135,84,0.95)','rgba(255,193,7,0.95)','rgba(220,53,69,0.95)'], borderWidth: 1 }] },
+                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
                     });
                 }
             }
@@ -497,7 +488,7 @@
                     new Chart(sEl, {
                         type: 'bar',
                         data: { labels: statusLabels, datasets: [{ label: 'Tickets', data: statusValues, backgroundColor: 'rgba(99,102,241,0.25)', borderColor: 'rgba(99,102,241,0.9)', borderWidth: 1 }] },
-                        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
                     });
                 }
 
@@ -506,7 +497,7 @@
                     new Chart(pEl, {
                         type: 'doughnut',
                         data: { labels: prioLabels, datasets: [{ data: prioValues, backgroundColor: ['rgba(25,135,84,0.7)','rgba(255,193,7,0.7)','rgba(220,53,69,0.7)'], borderWidth: 0 }] },
-                        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
                     });
                 }
             }

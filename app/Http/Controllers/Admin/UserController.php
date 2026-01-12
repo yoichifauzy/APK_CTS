@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Events\UsersChanged;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,6 +14,32 @@ use Throwable;
 
 class UserController extends Controller
 {
+    public function partial(Request $request)
+    {
+        $query = User::query()->with('category');
+
+        if ($request->has('role')) {
+            $query->where('role', $request->role);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->integer('category_id'));
+        }
+
+        $users = $query->orderByDesc('created_at')
+            ->paginate(20)
+            ->appends($request->only(['role', 'category_id', 'page']));
+
+        $role = $request->string('role')->toString();
+        $isSuperAdmin = true;
+        $readOnly = false;
+
+        return response()->json([
+            'rowsHtml' => view('admin.users._rows', compact('users', 'role', 'isSuperAdmin', 'readOnly'))->render(),
+            'paginationHtml' => (string) $users->links(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = User::query()->with('category');
@@ -146,6 +173,7 @@ class UserController extends Controller
         }
 
         // Redirect ke halaman manajemen sesuai role yang baru dibuat
+        event(new UsersChanged(role: $user->role, categoryId: $user->category_id, userId: $user->id, action: 'created'));
         return redirect()->route('admin.users.index', ['role' => $user->role])
             ->with('success', 'User berhasil dibuat');
     }
@@ -210,6 +238,7 @@ class UserController extends Controller
         }
 
         // Redirect back to the management list for the (possibly updated) role
+        event(new UsersChanged(role: $data['role'], categoryId: $user->category_id, userId: $user->id, action: 'updated'));
         return redirect()->route('admin.users.index', ['role' => $data['role']])->with('success', 'User berhasil diperbarui');
     }
 
@@ -225,6 +254,7 @@ class UserController extends Controller
         $user->delete();
 
         // Redirect back to the management list for the same role as the deleted user
+        event(new UsersChanged(role: $user->role, categoryId: $user->category_id, userId: $user->id, action: 'deleted'));
         return redirect()->route('admin.users.index', ['role' => $user->role])->with('success', 'User berhasil dihapus');
     }
 
@@ -237,6 +267,8 @@ class UserController extends Controller
         $user->update([
             'role' => $request->string('role')->toString(),
         ]);
+
+        event(new UsersChanged(role: $user->role, categoryId: $user->category_id, userId: $user->id, action: 'role_updated'));
 
         return back()->with('success', 'Role user berhasil diperbarui');
     }

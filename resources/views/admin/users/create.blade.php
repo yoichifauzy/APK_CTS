@@ -26,6 +26,68 @@
     {!! $pageTitleHtml !!}
 @endsection
 
+@section('scripts')
+<script>
+(function(){
+    const form = document.getElementById('createUserForm');
+    if (!form) return;
+
+    const listUrl = @json(route('admin.users.index', isset($role) ? ['role' => $role] : []));
+
+    let dirty = false;
+    const markDirty = () => { dirty = true; };
+    form.querySelectorAll('input,select,textarea').forEach(el => {
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+    });
+    form.addEventListener('submit', () => { dirty = false; });
+
+    function getRoleLabel(){
+        const role = '{{ $role ?? '' }}'.toLowerCase();
+        if (role === 'admin') return 'Admin';
+        if (role === 'agent') return 'Teknisi';
+        return 'User';
+    }
+
+    function resetForm(){
+        form.reset();
+        // ensure all text-like inputs cleared (reset() may keep old() values)
+        form.querySelectorAll('input[type="text"],input[type="email"],input[type="password"],textarea').forEach(el => {
+            el.value = '';
+        });
+        // keep hidden role if present
+        const hiddenRole = form.querySelector('input[type="hidden"][name="role"]');
+        if (hiddenRole && hiddenRole.value) {
+            // do nothing
+        }
+        dirty = false;
+    }
+
+    document.addEventListener('click', function(e){
+        const a = e.target.closest('a[href]');
+        if (!a || !dirty) return;
+        if (a.dataset && a.dataset.bypassUnsaved === '1') return;
+        if (a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        Swal.fire({
+            title: `Apakah Akan Melanjutkan Menambahkan ${getRoleLabel()}?`,
+            text: 'Pilih Ya untuk melanjutkan mengisi. Pilih Tidak untuk membatalkan dan mereset form.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya',
+            cancelButtonText: 'Tidak',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) return; // stay on page
+            // Tidak: discard/reset and go back to list (Kelola role yang sedang dibuat)
+            resetForm();
+            window.location.href = listUrl;
+        });
+    });
+})();
+</script>
+@endsection
+
 @section('title', $pageTitleText)
 
 @section('content')
@@ -36,7 +98,7 @@
                 <div class="card-header">{{ $cardTitle }}</div>
 
                 <div class="card-body">
-                    <form method="POST" action="{{ route('admin.users.store') }}">
+                    <form method="POST" action="{{ route('admin.users.store') }}" id="createUserForm">
                         @if(isset($role))
                             <input type="hidden" name="role" value="{{ $role }}">
                         @endif
@@ -91,7 +153,7 @@
 
                         <div class="d-flex gap-2">
                             <button class="btn btn-primary" type="submit">Buat Pengguna</button>
-                            <a href="{{ route('admin.users.index', isset($role) ? ['role' => $role] : []) }}" class="btn btn-outline-secondary">Batal</a>
+                            <a href="{{ route('admin.users.index', isset($role) ? ['role' => $role] : []) }}" class="btn btn-outline-secondary" data-bypass-unsaved="1">Batal</a>
                         </div>
                     </form>
                 </div>

@@ -68,6 +68,11 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Manajemen Kategori</h1>
     <div class="d-flex gap-2">
+        <div class="input-group" style="max-width: 360px;">
+            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input id="category-search" type="text" class="form-control" placeholder="Cari nama / slug..." autocomplete="off">
+            <button class="btn btn-outline-secondary" type="button" id="category-search-clear" title="Clear">Clear</button>
+        </div>
         <div class="btn-group" role="group">
             <a href="{{ route('admin.categories.exportPdf') }}" class="btn btn-sm btn-warning text-dark" title="Download" download>
                 <i class="fa-solid fa-download me-1"></i>Download
@@ -139,6 +144,35 @@
 
 @section('scripts')
 <script>
+(function(){
+    const input = document.getElementById('category-search');
+    const clearBtn = document.getElementById('category-search-clear');
+    const table = document.querySelector('table');
+    if (!input || !table) return;
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    function normalize(s){
+        return (s || '').toString().toLowerCase().trim();
+    }
+
+    function applyFilter(){
+        const q = normalize(input.value);
+        rows.forEach(row => {
+            const text = normalize(row.innerText);
+            row.style.display = q === '' || text.includes(q) ? '' : 'none';
+        });
+    }
+
+    input.addEventListener('input', applyFilter);
+    if (clearBtn){
+        clearBtn.addEventListener('click', function(){
+            input.value = '';
+            applyFilter();
+            input.focus();
+        });
+    }
+})();
+
 function confirmDelete(url, itemName) {
     Swal.fire({
         title: 'Konfirmasi Hapus',

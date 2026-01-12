@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Events\UsersChanged;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\Firebase\UserService;
@@ -12,6 +13,34 @@ use Illuminate\Support\Facades\Hash;
 
 class TechnicianController extends Controller
 {
+    public function partial(Request $request)
+    {
+        /** @var User $admin */
+        $admin = Auth::user();
+
+        $query = User::query()
+            ->where('role', 'agent')
+            ->orderBy('name');
+
+        if ($admin->category_id) {
+            $query->where('category_id', $admin->category_id);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        $level = $request->query('level');
+        if (in_array($level, ['junior', 'intermediate', 'expert'], true)) {
+            $query->where('availability_status', $level);
+        }
+
+        $users = $query->paginate(20)->withQueryString();
+
+        return response()->json([
+            'rowsHtml' => view('admin.technicians._rows', compact('users'))->render(),
+            'paginationHtml' => (string) $users->links(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         /** @var User $admin */
@@ -70,13 +99,13 @@ class TechnicianController extends Controller
         $agentIds = $agents->pluck('id')->all();
 
         // Current workload status per agent:
-        // - If has any ticket status != closed => use latest updated ticket status
+        // - If has any ticket status not finished (exclude resolved/closed) => use latest updated ticket status
         // - Else treat as Open (belum ada kerjaan)
         $workStatus = [];
         if (count($agentIds) > 0) {
             $tickets = \App\Models\Ticket::query()
                 ->whereIn('agent_id', $agentIds)
-                ->where('status', '!=', 'closed')
+                ->whereNotIn('status', ['resolved', 'closed'])
                 ->orderBy('updated_at', 'desc')
                 ->get(['agent_id', 'status']);
 
@@ -114,6 +143,23 @@ class TechnicianController extends Controller
                 ->with('error', 'Admin belum memiliki jobdesk/kategori. Hubungi Super Admin.');
         }
 
+        // Duplicate guard (friendly message)
+        $name = trim((string) $request->input('name', ''));
+        $email = trim((string) $request->input('email', ''));
+        if ($name !== '' && $email !== '') {
+            $exists = User::query()
+                ->where('role', 'agent')
+                ->where('category_id', $admin->category_id)
+                ->where(function ($q) use ($name, $email) {
+                    $q->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                        ->orWhereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
+                })
+                ->exists();
+            if ($exists) {
+                return back()->withInput()->with('error', 'Data teknisi sudah ada (nama/email sudah terdaftar).');
+            }
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -144,7 +190,7 @@ class TechnicianController extends Controller
         } catch (\Throwable $e) {
             logger()->error('Failed to write technician to Firestore: ' . $e->getMessage());
         }
-
+        event(new UsersChanged(role: 'agent', categoryId: $user->category_id, userId: $user->id, action: 'created'));
         return redirect()->route('admin.technicians.index')->with('success', 'Teknisi berhasil dibuat');
     }
 
@@ -175,6 +221,24 @@ class TechnicianController extends Controller
 
         if (!$admin->category_id || (int) $user->category_id !== (int) $admin->category_id) {
             abort(403);
+        }
+
+        // Duplicate guard (friendly message)
+        $name = trim((string) $request->input('name', ''));
+        $email = trim((string) $request->input('email', ''));
+        if ($name !== '' && $email !== '') {
+            $exists = User::query()
+                ->where('role', 'agent')
+                ->where('category_id', $admin->category_id)
+                ->where('id', '!=', $user->id)
+                ->where(function ($q) use ($name, $email) {
+                    $q->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                        ->orWhereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
+                })
+                ->exists();
+            if ($exists) {
+                return back()->withInput()->with('error', 'Data teknisi sudah ada (nama/email sudah terdaftar).');
+            }
         }
 
         $data = $request->validate([
@@ -209,7 +273,7 @@ class TechnicianController extends Controller
         } catch (\Throwable $e) {
             logger()->error('Failed to update technician in Firestore: ' . $e->getMessage());
         }
-
+        event(new UsersChanged(role: 'agent', categoryId: $user->category_id, userId: $user->id, action: 'updated'));
         return redirect()->route('admin.technicians.index')->with('success', 'Teknisi berhasil diperbarui');
     }
 
@@ -233,7 +297,7 @@ class TechnicianController extends Controller
         }
 
         $user->delete();
-
+        event(new UsersChanged(role: 'agent', categoryId: $user->category_id, userId: $user->id, action: 'deleted'));
         return redirect()->route('admin.technicians.index')->with('success', 'Teknisi berhasil dihapus');
     }
 }

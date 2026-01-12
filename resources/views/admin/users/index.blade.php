@@ -83,15 +83,17 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">{!! $pageTitleHtml !!}</h1>
     <div class="d-flex gap-2 align-items-center" style="min-width: 320px;">
-        <form method="GET" action="{{ route('admin.users.index') }}" class="d-flex gap-2 align-items-center">
-            <input type="hidden" name="role" value="{{ request('role') }}" />
-            <select name="category_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
-                <option value="">Semua Jobdesk</option>
-                @foreach(($categories ?? collect()) as $cat)
-                    <option value="{{ $cat->id }}" @selected((string)request('category_id') === (string)$cat->id)>{{ $cat->name }}</option>
-                @endforeach
-            </select>
-        </form>
+        @if($role !== 'customer')
+            <form method="GET" action="{{ route('admin.users.index') }}" class="d-flex gap-2 align-items-center">
+                <input type="hidden" name="role" value="{{ request('role') }}" />
+                <select name="category_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
+                    <option value="">Semua Jobdesk</option>
+                    @foreach(($categories ?? collect()) as $cat)
+                        <option value="{{ $cat->id }}" @selected((string)request('category_id') === (string)$cat->id)>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </form>
+        @endif
         <div class="input-group" style="max-width: 360px;">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
             <input id="user-search" type="text" class="form-control" placeholder="Cari nama / email..." autocomplete="off">
@@ -134,46 +136,14 @@
                     @endif
                 </tr>
             </thead>
-            <tbody>
-                @foreach($users as $u)
-                    <tr>
-                            <td>
-                                @php
-                                    $no = 0;
-                                @endphp
-                                {{-- Pagination-aware numbering --}}
-                                @if(is_object($users) && method_exists($users, 'currentPage'))
-                                    {{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}
-                                @else
-                                    {{ $loop->iteration }}
-                                @endif
-                            </td>
-                            <td>{{ $u->name }}</td>
-                            <td>{{ $u->email }}</td>
-                            @if($role === 'admin')
-                                <td>{{ $u->category->name ?? '-' }}</td>
-                            @elseif($role === 'agent')
-                                <td>{{ $u->category->name ?? '-' }}</td>
-                                <td>{{ $u->availability_status ?? '-' }}</td>
-                            @endif
-                            <td><span class="badge text-bg-secondary">{{ $u->role }}</span></td>
-                            @if(!$readOnly)
-                                <td class="text-end">
-                                    <div class="d-flex justify-content-end gap-2">
-                                        <a href="{{ route('admin.users.show', $u) }}" class="btn btn-sm btn-outline-secondary">Lihat</a>
-                                        <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">Ubah</a>
-                                        <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.users.destroy', $u) }}?role={{ request('role') }}', '{{ $u->name }}')">Hapus</button>
-                                    </div>
-                                </td>
-                            @endif
-                    </tr>
-                @endforeach
+            <tbody id="users-tbody">
+                @include('admin.users._rows', ['users' => $users, 'role' => $role, 'isSuperAdmin' => $isSuperAdmin, 'readOnly' => $readOnly])
             </tbody>
         </table>
     </div>
 </div>
 
-<div class="mt-3">
+<div class="mt-3" id="users-pagination">
     {{ $users->links() }}
 </div>
     <form id="deleteForm" method="POST" style="display:none;">
@@ -182,6 +152,29 @@
     </form>
 </div>
 @endsection
+
+@if($isSuperAdmin)
+<!-- Modal: View User (Super Admin) -->
+<div class="modal fade" id="userViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Pengguna</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2"><span class="fw-semibold">Nama:</span> <span id="uv-name">-</span></div>
+                <div class="mb-2"><span class="fw-semibold">Email:</span> <span id="uv-email">-</span></div>
+                <div class="mb-2" id="uv-jobdesk-row" style="display:none;"><span class="fw-semibold">Jobdesk:</span> <span id="uv-jobdesk">-</span></div>
+                <div class="mb-2" id="uv-level-row" style="display:none;"><span class="fw-semibold">Level:</span> <span id="uv-level">-</span></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 @section('scripts')
 <script>
@@ -253,6 +246,45 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 }
 
+@if($isSuperAdmin)
+// Super Admin modal: populate fields
+function bindUserViewButtons(){
+    document.querySelectorAll('.btn-user-view').forEach(btn => {
+        if (btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function(){
+            const role = (this.dataset.role || '').toLowerCase();
+            const name = this.dataset.name || '-';
+            const email = this.dataset.email || '-';
+            const jobdesk = this.dataset.jobdesk || '-';
+            const level = this.dataset.level || '-';
+
+            document.getElementById('uv-name').textContent = name;
+            document.getElementById('uv-email').textContent = email;
+
+            const jobdeskRow = document.getElementById('uv-jobdesk-row');
+            const levelRow = document.getElementById('uv-level-row');
+            jobdeskRow.style.display = 'none';
+            levelRow.style.display = 'none';
+
+            // Role-specific fields
+            if (role === 'admin') {
+                document.getElementById('uv-jobdesk').textContent = jobdesk;
+                jobdeskRow.style.display = '';
+            } else if (role === 'agent') {
+                document.getElementById('uv-jobdesk').textContent = jobdesk;
+                document.getElementById('uv-level').textContent = level;
+                jobdeskRow.style.display = '';
+                levelRow.style.display = '';
+            }
+            // customer: name + email only
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindUserViewButtons);
+@endif
+
 document.getElementById('btn-users-print')?.addEventListener('click', function() {
     const printUrl = '{{ route('admin.users.exportPdf', ['role' => request('role'), 'category_id' => request('category_id')]) }}';
     Swal.fire({
@@ -277,5 +309,63 @@ document.getElementById('btn-users-print')?.addEventListener('click', function()
         }
     });
 });
+    const tbody = document.getElementById('users-tbody');
+    const pager = document.getElementById('users-pagination');
+    const partialUrl = @json(route('admin.users.partial'));
+
+    if (!tbody || !pager || !partialUrl) return;
+
+    async function refreshUsersIndex(){
+        try {
+            const url = new URL(partialUrl, window.location.origin);
+            const current = new URL(window.location.href);
+            ['role', 'category_id', 'page'].forEach(k => {
+                const v = current.searchParams.get(k);
+                if (v !== null) url.searchParams.set(k, v);
+            });
+
+            const res = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                cache: 'no-store'
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && typeof data.rowsHtml === 'string') tbody.innerHTML = data.rowsHtml;
+            if (data && typeof data.paginationHtml === 'string') pager.innerHTML = data.paginationHtml;
+
+            @if($isSuperAdmin)
+            bindUserViewButtons();
+            @endif
+
+            // re-apply search filter to new rows
+            const input = document.getElementById('user-search');
+            if (input) input.dispatchEvent(new Event('input'));
+        } catch (e) {
+            // silent
+        }
+    }
+
+    function subscribe(){
+        if (!window.Echo || !window.Echo.private) return false;
+        window.Echo.private('superadmin')
+            .listen('.users.changed', function(){
+                refreshUsersIndex();
+                // keep sidebar badges in sync too if available
+                if (window.CTMLive && typeof window.CTMLive.refreshLiveSummary === 'function') {
+                    window.CTMLive.refreshLiveSummary();
+                }
+            });
+        return true;
+    }
+
+    window.addEventListener('ctm:echo-ready', subscribe);
+    document.addEventListener('DOMContentLoaded', function(){
+        if (window.Echo) subscribe();
+    });
+})();
 </script>
 @endsection

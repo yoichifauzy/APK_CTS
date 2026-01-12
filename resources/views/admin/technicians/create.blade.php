@@ -14,7 +14,7 @@
                 <div class="card-header">Tambah Teknisi</div>
 
                 <div class="card-body">
-                    <form method="POST" action="{{ route('admin.technicians.store') }}">
+                    <form method="POST" action="{{ route('admin.technicians.store') }}" id="createTechnicianForm">
                         @csrf
 
                         <div class="mb-3">
@@ -56,4 +56,71 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+(function(){
+    const form = document.getElementById('createTechnicianForm');
+    if (!form) return;
+
+    const listUrl = @json(route('admin.technicians.index'));
+
+    // Show errors as alert
+    @if(session('error'))
+    Swal.fire({
+        title: 'Gagal',
+        text: '{{ addslashes(session('error')) }}',
+        icon: 'error',
+        confirmButtonText: 'OK'
+    });
+    @elseif($errors->any())
+    Swal.fire({
+        title: 'Gagal',
+        text: '{{ addslashes($errors->first()) }}',
+        icon: 'error',
+        confirmButtonText: 'OK'
+    });
+    @endif
+
+    // Unsaved changes guard
+    let dirty = false;
+    const markDirty = () => { dirty = true; };
+    form.querySelectorAll('input,select,textarea').forEach(el => {
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+    });
+    form.addEventListener('submit', () => { dirty = false; });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (!dirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    document.addEventListener('click', function(e){
+        const a = e.target.closest('a[href]');
+        if (!a || !dirty) return;
+        // allow opening in new tab etc
+        if (a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        Swal.fire({
+            title: 'Apakah ingin merubah atau menambah data?',
+            text: 'Anda belum menyimpan perubahan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya',
+            cancelButtonText: 'Tidak',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) return; // stay
+            // Tidak: discard/reset then go back to list
+            form.reset();
+            form.querySelectorAll('input[type="text"],input[type="email"],input[type="password"],textarea').forEach(el => { el.value = ''; });
+            dirty = false;
+            window.location.href = listUrl;
+        });
+    });
+})();
+</script>
 @endsection

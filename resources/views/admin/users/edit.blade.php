@@ -63,8 +63,8 @@
                         {{-- Status agent ditentukan otomatis berdasarkan tiket aktif (assigned/in_progress/resolved). --}}
 
                                                 <div class="d-flex gap-2">
-                                                        <button class="btn btn-primary" type="button" id="saveBtn">Simpan</button>
-                                                        <a href="{{ route('admin.users.index', ['role' => $user->role]) }}" class="btn btn-outline-secondary">Batal</a>
+                                                    <button class="btn btn-primary" type="button" id="saveBtn">Simpan</button>
+                                                    <a href="{{ route('admin.users.index', ['role' => $user->role]) }}" class="btn btn-outline-secondary" data-bypass-unsaved="1">Batal</a>
                                                 </div>
                     </form>
                 </div>
@@ -83,6 +83,51 @@
                         var confirmSaveModal = new bootstrap.Modal(document.getElementById('confirmSaveModal'));
                         var confirmSaveBtn = document.getElementById('confirmSaveBtn');
 
+            // Unsaved changes guard
+            var dirty = false;
+            function markDirty(){ dirty = true; }
+            if (editForm){
+                editForm.querySelectorAll('input,select,textarea').forEach(function(el){
+                    el.addEventListener('input', markDirty);
+                    el.addEventListener('change', markDirty);
+                });
+                editForm.addEventListener('submit', function(){ dirty = false; });
+            }
+
+            function getRoleLabel(){
+                var role = '{{ $user->role ?? '' }}'.toLowerCase();
+                if (role === 'admin') return 'Admin';
+                if (role === 'agent') return 'Teknisi';
+                return 'User';
+            }
+
+            function discardChanges(){
+                if (editForm) editForm.reset();
+                dirty = false;
+            }
+
+            document.addEventListener('click', function(e){
+                var a = e.target.closest('a[href]');
+                if (!a || !dirty) return;
+                if (a.dataset && a.dataset.bypassUnsaved === '1') return;
+                if (a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Apakah Akan Melanjutkan Mengubah ' + getRoleLabel() + '?',
+                    text: 'Pilih Ya untuk melanjutkan mengubah. Pilih Tidak untuk membatalkan perubahan.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya',
+                    cancelButtonText: 'Tidak',
+                    reverseButtons: true
+                }).then(function(result){
+                    if (result.isConfirmed) return; // stay on page
+                    // Tidak: discard changes then continue navigation
+                    discardChanges();
+                    window.location.href = a.href;
+                });
+            });
+
                         if (saveBtn && confirmSaveModal){
                                 saveBtn.addEventListener('click', function(){
                                         confirmSaveModal.show();
@@ -91,6 +136,7 @@
 
                         if (confirmSaveBtn && editForm){
                                 confirmSaveBtn.addEventListener('click', function(){
+                                dirty = false;
                                         // submit the original edit form
                                         editForm.submit();
                                 });

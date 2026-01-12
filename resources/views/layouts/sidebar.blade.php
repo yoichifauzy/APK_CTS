@@ -6,9 +6,21 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name', 'CTM'))</title>
 
+    @auth
+        <script>
+            window.__ctm = {
+                userId: @json(auth()->id()),
+                role: @json(auth()->user()->role ?? null),
+                categoryId: @json(auth()->user()->category_id ?? null),
+            };
+        </script>
+    @endauth
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @vite(['resources/js/app.js'])
 
     <style>
         * {
@@ -524,6 +536,13 @@
                         <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-ticket"></i>
                             <span>Tiket</span>
+                            @php
+                                $openCount = (int) ($sidebarOpenTicketsCount ?? 0);
+                                $showOpenBadge = in_array((auth()->user()->role ?? null), ['admin', 'customer'], true);
+                            @endphp
+                            <span id="sidebar-open-badge" class="badge bg-danger ms-auto" style="{{ (!$showOpenBadge || $openCount <= 0) ? 'display:none;' : '' }}">
+                                <span id="sidebar-open-count">{{ $openCount }}</span>
+                            </span>
                         </a>
                     @endif
                 @else
@@ -540,6 +559,10 @@
                         <a href="{{ route('discussions.index') }}" class="nav-link {{ request()->routeIs('discussions.*') ? 'active' : '' }}">
                             <i class="fa-solid fa-comments"></i>
                             <span>Diskusi</span>
+                            @php $unread = (int) ($sidebarUnreadDiscussionCount ?? 0); @endphp
+                            <span id="sidebar-unread-badge" class="badge bg-danger ms-auto" style="{{ ($unread <= 0) ? 'display:none;' : '' }}">
+                                <span id="sidebar-unread-count">{{ $unread }}</span>
+                            </span>
                         </a>
                     </li>
                 @endif
@@ -805,6 +828,79 @@
     @endif
 
     @yield('scripts')
+
+    @auth
+        <script>
+            (function () {
+                const liveUrl = @json(route('live.summary'));
+                const userId = @json(auth()->user()->id ?? null);
+                if (!liveUrl || !userId) return;
+
+                const keyLatestTicket = `live:lastAssignedTicket:${userId}`;
+                let lastTicketId = localStorage.getItem(keyLatestTicket);
+                lastTicketId = lastTicketId ? parseInt(lastTicketId, 10) : null;
+
+                function setBadge(idBadge, idCount, value, shouldShow) {
+                    const badge = document.getElementById(idBadge);
+                    const countEl = document.getElementById(idCount);
+                    if (!badge || !countEl) return;
+                    const n = parseInt(value ?? 0, 10) || 0;
+                    countEl.textContent = String(n);
+                    const show = (shouldShow !== false) && n > 0;
+                    badge.style.display = show ? '' : 'none';
+                }
+
+                async function refreshLiveSummary() {
+                    try {
+                        const res = await fetch(liveUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            cache: 'no-store'
+                        });
+
+                        if (!res.ok) return;
+                        const data = await res.json();
+
+                        // Update sidebar badges
+                        setBadge('sidebar-open-badge', 'sidebar-open-count', data.openTicketsCount, data.showOpenBadge);
+                        setBadge('sidebar-unread-badge', 'sidebar-unread-count', data.unreadDiscussionCount, true);
+
+                        // Agent: notify when there is a new/changed assignment (best-effort)
+                        if (data.role === 'agent' && data.latestAssignedTicketId) {
+                            const currentId = parseInt(data.latestAssignedTicketId, 10);
+                            if (currentId && lastTicketId && currentId !== lastTicketId) {
+                                if (window.Swal && typeof Swal.fire === 'function') {
+                                    Swal.fire({
+                                        toast: true,
+                                        position: 'top-end',
+                                        icon: 'info',
+                                        title: 'Ada tiket baru ditugaskan',
+                                        showConfirmButton: false,
+                                        timer: 3000,
+                                        timerProgressBar: true
+                                    });
+                                }
+                            }
+                            lastTicketId = currentId;
+                            localStorage.setItem(keyLatestTicket, String(currentId));
+                        }
+                    } catch (e) {
+                        // silent
+                    }
+                }
+
+                // Expose for Echo-triggered refresh (no polling, no reload)
+                window.CTMLive = window.CTMLive || {};
+                window.CTMLive.refreshLiveSummary = refreshLiveSummary;
+
+                // Initial fetch
+                refreshLiveSummary();
+            })();
+        </script>
+    @endauth
 
     <script>
         (function () {

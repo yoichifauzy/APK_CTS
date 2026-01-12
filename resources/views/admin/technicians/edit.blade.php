@@ -4,6 +4,68 @@
     <i class="fa-solid fa-user-pen me-2"></i>Edit Teknisi
 @endsection
 
+@section('scripts')
+<script>
+(function(){
+    const form = document.getElementById('editTechnicianForm');
+    if (!form) return;
+
+    // Show errors as alert
+    @if(session('error'))
+    Swal.fire({
+        title: 'Gagal',
+        text: '{{ addslashes(session('error')) }}',
+        icon: 'error',
+        confirmButtonText: 'OK'
+    });
+    @elseif($errors->any())
+    Swal.fire({
+        title: 'Gagal',
+        text: '{{ addslashes($errors->first()) }}',
+        icon: 'error',
+        confirmButtonText: 'OK'
+    });
+    @endif
+
+    // Unsaved changes guard
+    let dirty = false;
+    const markDirty = () => { dirty = true; };
+    form.querySelectorAll('input,select,textarea').forEach(el => {
+        el.addEventListener('input', markDirty);
+        el.addEventListener('change', markDirty);
+    });
+    form.addEventListener('submit', () => { dirty = false; });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (!dirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    document.addEventListener('click', function(e){
+        const a = e.target.closest('a[href]');
+        if (!a || !dirty) return;
+        if (a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        Swal.fire({
+            title: 'Apakah ingin merubah atau menambah data?',
+            text: 'Anda belum menyimpan perubahan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya',
+            cancelButtonText: 'Tidak',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                dirty = false;
+                window.location.href = a.href;
+            }
+        });
+    });
+})();
+</script>
+@endsection
+
 @section('title', 'Edit Teknisi')
 
 @section('content')

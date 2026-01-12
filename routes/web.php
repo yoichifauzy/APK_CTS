@@ -7,6 +7,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketDiscussionController;
 use App\Http\Controllers\TicketBarcodeController;
+use App\Http\Controllers\LiveUpdateController;
 use App\Services\Firebase\FirebaseFactory;
 use Illuminate\Support\Facades\Auth;
 
@@ -48,6 +49,11 @@ use Illuminate\Support\Facades\Auth;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+// =================================================================
+// LIVE UPDATE (Polling) - Butuh login
+// =================================================================
+Route::middleware('auth')->get('/live/summary', [LiveUpdateController::class, 'summary'])->name('live.summary');
 
 // =================================================================
 // DASHBOARD ROUTE - Butuh login (middleware auth)
@@ -566,6 +572,7 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     // ===== USER MANAGEMENT ROUTES =====
     // Admin bisa kelola semua users (view, create, edit, delete, change role)
     Route::get('/admin/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/users/partial', [\App\Http\Controllers\Admin\UserController::class, 'partial'])->name('admin.users.partial');
     Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('admin.users.store');
     Route::get('/admin/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
@@ -603,6 +610,7 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
 // =================================================================
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'index'])->name('admin.technicians.index');
+    Route::get('/admin/technicians/partial', [\App\Http\Controllers\Admin\TechnicianController::class, 'partial'])->name('admin.technicians.partial');
     Route::get('/admin/technicians/tracking', [\App\Http\Controllers\Admin\TechnicianController::class, 'tracking'])->name('admin.technicians.tracking');
     Route::get('/admin/technicians/create', [\App\Http\Controllers\Admin\TechnicianController::class, 'create'])->name('admin.technicians.create');
     Route::post('/admin/technicians', [\App\Http\Controllers\Admin\TechnicianController::class, 'store'])->name('admin.technicians.store');

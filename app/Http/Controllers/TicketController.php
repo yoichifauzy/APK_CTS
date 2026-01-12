@@ -410,11 +410,11 @@ class TicketController extends Controller
         // (status != closed). Exclude ticket yang sedang diproses ini agar re-submit tidak keblok.
         $agentHasActiveTicket = Ticket::query()
             ->where('agent_id', (int) $agent->id)
-            ->where('status', '!=', 'closed')
+            ->whereNotIn('status', ['resolved', 'closed'])
             ->where('firebase_id', '!=', $id)
             ->exists();
         if ($agentHasActiveTicket) {
-            return back()->with('error', 'Agent sedang menangani tiket lain (belum Closed) sehingga tidak bisa ditugaskan lagi.');
+            return back()->with('error', 'Agent sedang menangani tiket lain (belum selesai) sehingga tidak bisa ditugaskan lagi.');
         }
 
         /** @var User|null $user */

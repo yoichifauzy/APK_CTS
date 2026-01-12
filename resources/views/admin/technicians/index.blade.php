@@ -63,42 +63,14 @@
                         <th class="text-end">Aksi</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach($users as $u)
-                        <tr>
-                            <td>
-                                @if(is_object($users) && method_exists($users, 'currentPage'))
-                                    {{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}
-                                @else
-                                    {{ $loop->iteration }}
-                                @endif
-                            </td>
-                            <td>{{ $u->name }}</td>
-                            <td>{{ $u->email }}</td>
-                            <td>
-                                @php($lv = $u->availability_status ?? 'junior')
-                                @if($lv === 'expert')
-                                    <span class="badge text-bg-success">Expert</span>
-                                @elseif($lv === 'intermediate')
-                                    <span class="badge text-bg-warning text-dark">Intermediate</span>
-                                @else
-                                    <span class="badge text-bg-secondary">Junior</span>
-                                @endif
-                            </td>
-                            <td class="text-end">
-                                <div class="d-flex justify-content-end gap-2">
-                                    <a href="{{ route('admin.technicians.edit', $u) }}" class="btn btn-sm btn-outline-primary">Ubah</a>
-                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ route('admin.technicians.destroy', $u) }}', '{{ $u->name }}')">Hapus</button>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
+                <tbody id="technicians-tbody">
+                    @include('admin.technicians._rows', ['users' => $users])
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="mt-3">
+    <div class="mt-3" id="technicians-pagination">
         {{ $users->links() }}
     </div>
 
@@ -116,7 +88,6 @@
     const clearBtn = document.getElementById('user-search-clear');
     const table = document.querySelector('table');
     if (!input || !table) return;
-    const rows = Array.from(table.querySelectorAll('tbody tr'));
 
     function normalize(s){
         return (s || '').toString().toLowerCase().trim();
@@ -124,6 +95,7 @@
 
     function applyFilter(){
         const q = normalize(input.value);
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
         rows.forEach(row => {
             const text = normalize(row.innerText);
             row.style.display = q === '' || text.includes(q) ? '' : 'none';
@@ -165,5 +137,85 @@ function confirmDelete(url, userName) {
         }
     });
 }
+
+@if(session('success'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: 'Berhasil',
+        text: '{{ addslashes(session('success')) }}',
+        icon: 'success',
+        confirmButtonText: 'OK'
+    });
+});
+@endif
+
+@if(session('error'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: 'Gagal',
+        text: '{{ addslashes(session('error')) }}',
+        icon: 'error',
+        confirmButtonText: 'OK'
+    });
+});
+@endif
+
+// Real-time refresh (Admin subscribe ke category.{categoryId} channel)
+(function(){
+    const tbody = document.getElementById('technicians-tbody');
+    const pager = document.getElementById('technicians-pagination');
+    const partialUrl = @json(route('admin.technicians.partial'));
+    const categoryId = window.__ctm?.categoryId;
+
+    if (!tbody || !pager || !partialUrl || !categoryId) return;
+
+    async function refreshTechniciansIndex(){
+        try {
+            const url = new URL(partialUrl, window.location.origin);
+            const current = new URL(window.location.href);
+            ['level', 'page'].forEach(k => {
+                const v = current.searchParams.get(k);
+                if (v !== null) url.searchParams.set(k, v);
+            });
+
+            const res = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                cache: 'no-store'
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && typeof data.rowsHtml === 'string') tbody.innerHTML = data.rowsHtml;
+            if (data && typeof data.paginationHtml === 'string') pager.innerHTML = data.paginationHtml;
+
+            // re-apply search filter to new rows
+            const input = document.getElementById('user-search');
+            if (input) input.dispatchEvent(new Event('input'));
+        } catch (e) {
+            // silent
+        }
+    }
+
+    function subscribe(){
+        if (!window.Echo || !window.Echo.private) return false;
+        window.Echo.private('category.' + categoryId)
+            .listen('.users.changed', function(){
+                refreshTechniciansIndex();
+                // keep sidebar badges in sync too if available
+                if (window.CTMLive && typeof window.CTMLive.refreshLiveSummary === 'function') {
+                    window.CTMLive.refreshLiveSummary();
+                }
+            });
+        return true;
+    }
+
+    window.addEventListener('ctm:echo-ready', subscribe);
+    document.addEventListener('DOMContentLoaded', function(){
+        if (window.Echo) subscribe();
+    });
+})();
 </script>
 @endsection

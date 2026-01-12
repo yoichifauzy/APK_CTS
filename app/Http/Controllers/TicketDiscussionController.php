@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Ticket;
+use App\Models\TicketComment;
+use App\Models\TicketDiscussionRead;
 use App\Services\Firebase\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +65,45 @@ class TicketDiscussionController extends Controller
             $tickets = array_values(array_filter($tickets, fn($t) => (string) ($t['priority'] ?? '') === $priority));
         }
 
+        // Add unread message counts per ticket (DB-based)
+        try {
+            $firebaseIds = collect($tickets)->map(fn($t) => (string) ($t['id'] ?? ''))->filter()->values();
+            if ($firebaseIds->isNotEmpty()) {
+                $ticketIdMap = Ticket::query()
+                    ->whereIn('firebase_id', $firebaseIds->all())
+                    ->pluck('id', 'firebase_id');
+
+                $ticketIds = $ticketIdMap->values()->map(fn($v) => (int) $v)->all();
+                if (count($ticketIds) > 0) {
+                    $unreadByTicketId = TicketComment::query()
+                        ->selectRaw('ticket_comments.ticket_id, COUNT(*) as unread')
+                        ->leftJoin('ticket_discussion_reads as r', function ($join) use ($user) {
+                            $join->on('r.ticket_id', '=', 'ticket_comments.ticket_id')
+                                ->where('r.user_id', '=', (int) $user->id);
+                        })
+                        ->whereIn('ticket_comments.ticket_id', $ticketIds)
+                        ->where('ticket_comments.user_id', '!=', (int) $user->id)
+                        ->when($user->role === 'customer', fn($q) => $q->where('ticket_comments.is_internal', false))
+                        ->whereRaw("ticket_comments.created_at > COALESCE(r.last_read_at, '1970-01-01 00:00:00')")
+                        ->groupBy('ticket_comments.ticket_id')
+                        ->pluck('unread', 'ticket_comments.ticket_id');
+
+                    $unreadByFirebaseId = [];
+                    foreach ($ticketIdMap as $fid => $tid) {
+                        $unreadByFirebaseId[(string) $fid] = (int) ($unreadByTicketId[(int) $tid] ?? 0);
+                    }
+
+                    $tickets = array_map(function ($t) use ($unreadByFirebaseId) {
+                        $fid = (string) ($t['id'] ?? '');
+                        $t['unread_count'] = (int) ($unreadByFirebaseId[$fid] ?? 0);
+                        return $t;
+                    }, $tickets);
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore unread computation failures
+        }
+
         return view('discussions.index', compact('tickets', 'q', 'status', 'priority'));
     }
 
@@ -96,6 +138,19 @@ class TicketDiscussionController extends Controller
         }
 
         $comments = $this->ticketService->getComments($ticket);
+
+        // Mark as read (best-effort)
+        try {
+            $ticketRowId = Ticket::query()->where('firebase_id', $ticket)->value('id');
+            if ($ticketRowId) {
+                TicketDiscussionRead::updateOrCreate(
+                    ['ticket_id' => (int) $ticketRowId, 'user_id' => (int) $user->id],
+                    ['last_read_at' => now()]
+                );
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
 
         // Generate temporary URLs for ticket attachments (if any)
         if (isset($ticketData['attachments']) && is_array($ticketData['attachments'])) {

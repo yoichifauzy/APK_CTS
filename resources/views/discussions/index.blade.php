@@ -82,6 +82,7 @@
                                 <th style="width: 40%">Judul</th>
                                 <th>Status</th>
                                 <th>Prioritas</th>
+                                <th>Pesan</th>
                                 <th>Terakhir Update</th>
                                 <th class="text-end">Aksi</th>
                             </tr>
@@ -107,6 +108,15 @@
                                         <span class="badge text-bg-{{ $priorityColors[$prio] ?? 'secondary' }}">
                                             {{ $prio !== '' ? strtoupper(substr($prio, 0, 1)) : '-' }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        @php $unread = (int) ($t['unread_count'] ?? 0); @endphp
+                                        @if($unread > 0)
+                                            <span class="badge text-bg-danger">{{ $unread }}</span>
+                                            <span class="ms-1">pesan belum dibaca</span>
+                                        @else
+                                            <span class="text-muted">tidak ada pesan</span>
+                                        @endif
                                     </td>
                                     <td class="text-muted">{{ $t['updated_at_iso'] ?? ($t['created_at_iso'] ?? '-') }}</td>
                                     <td class="text-end">
