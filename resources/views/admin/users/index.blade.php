@@ -309,6 +309,8 @@ document.getElementById('btn-users-print')?.addEventListener('click', function()
         }
     });
 });
+
+(function(){
     const tbody = document.getElementById('users-tbody');
     const pager = document.getElementById('users-pagination');
     const partialUrl = @json(route('admin.users.partial'));
