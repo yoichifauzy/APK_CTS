@@ -91,6 +91,17 @@
 @section('title', $pageTitleText)
 
 @section('content')
+<style>
+    @media (max-width: 576px) {
+        .user-form-actions {
+            flex-direction: column;
+        }
+
+        .user-form-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -151,7 +162,7 @@
 
                         {{-- Status agent ditentukan otomatis berdasarkan tiket aktif (assigned/in_progress/resolved). --}}
 
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 user-form-actions">
                             <button class="btn btn-primary" type="submit">Buat Pengguna</button>
                             <a href="{{ route('admin.users.index', isset($role) ? ['role' => $role] : []) }}" class="btn btn-outline-secondary" data-bypass-unsaved="1">Batal</a>
                         </div>

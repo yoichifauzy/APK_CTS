@@ -7,6 +7,17 @@
 @section('title', 'Edit Pengguna')
 
 @section('content')
+<style>
+    @media (max-width: 576px) {
+        .user-edit-actions {
+            flex-direction: column;
+        }
+
+        .user-edit-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -62,7 +73,7 @@
 
                         {{-- Status agent ditentukan otomatis berdasarkan tiket aktif (assigned/in_progress/resolved). --}}
 
-                                                <div class="d-flex gap-2">
+                                                <div class="d-flex gap-2 user-edit-actions">
                                                     <button class="btn btn-primary" type="button" id="saveBtn">Simpan</button>
                                                     <a href="{{ route('admin.users.index', ['role' => $user->role]) }}" class="btn btn-outline-secondary" data-bypass-unsaved="1">Batal</a>
                                                 </div>

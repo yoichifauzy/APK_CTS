@@ -1092,7 +1092,7 @@
                     const displayItems = [];
 
                     for (const it of items) {
-                        let soundKey = null;
+                        let soundKey = (it && typeof it.sound === 'string' && it.sound) ? it.sound : null;
 
                         const ticketId = (it && it.ticket_id != null) ? String(it.ticket_id) : null;
                         const status = (it && it.status != null) ? String(it.status) : null;
@@ -1105,7 +1105,7 @@
 
                                 if (isAdminRole && !hasAgent && status === 'open') {
                                     if (!newUnassignedNotified[ticketId]) {
-                                        soundKey = 'new';
+                                        if (!soundKey) soundKey = 'new';
                                         newUnassignedNotified[ticketId] = data && data.serverNow ? data.serverNow : (new Date().toISOString());
                                     }
                                 }
@@ -1113,7 +1113,7 @@
                                 if (status) {
                                     const prev = statusMap[ticketId];
                                     if (prev && prev !== status) {
-                                        soundKey = 'status';
+                                        if (!soundKey) soundKey = 'status';
                                     }
                                     statusMap[ticketId] = status;
                                 }

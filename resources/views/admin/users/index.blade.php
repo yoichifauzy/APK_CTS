@@ -32,6 +32,24 @@
 
 @section('content')
 <style>
+    .users-toolbar {
+        gap: 0.75rem;
+    }
+
+    .users-toolbar-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .users-filter-form,
+    .users-search,
+    .users-export-group {
+        flex: 0 1 auto;
+    }
+
     /* Responsive admin tables */
     @media (max-width: 992px) {
         .table-responsive {
@@ -49,9 +67,52 @@
             font-size: 13px;
         }
 
-        .d-flex.justify-content-between {
+        .users-toolbar {
             flex-direction: column;
+            align-items: stretch !important;
             gap: 10px;
+        }
+
+        .users-toolbar-right {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .users-filter-form,
+        .users-search,
+        .users-export-group,
+        .users-create-btn {
+            width: 100%;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .users-filter-form .form-select,
+        .users-search .form-control,
+        .users-search .input-group-text,
+        .users-search .btn,
+        .users-export-group .btn,
+        .users-create-btn {
+            width: 100%;
+        }
+
+        .users-export-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .users-export-group .btn {
+            flex: 1 1 100%;
+        }
+
+        .users-action-group {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .users-action-group .btn {
+            flex: 1 1 auto;
         }
 
         .btn-primary {
@@ -80,11 +141,11 @@
     }
 </style>
 <div class="container-fluid">
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 users-toolbar">
     <h1 class="h3 mb-0">{!! $pageTitleHtml !!}</h1>
-    <div class="d-flex gap-2 align-items-center" style="min-width: 320px;">
+    <div class="users-toolbar-right">
         @if($role !== 'customer')
-            <form method="GET" action="{{ route('admin.users.index') }}" class="d-flex gap-2 align-items-center">
+            <form method="GET" action="{{ route('admin.users.index') }}" class="d-flex gap-2 align-items-center users-filter-form">
                 <input type="hidden" name="role" value="{{ request('role') }}" />
                 <select name="category_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
                     <option value="">Semua Jobdesk</option>
@@ -94,12 +155,12 @@
                 </select>
             </form>
         @endif
-        <div class="input-group" style="max-width: 360px;">
+        <div class="input-group users-search" style="max-width: 360px;">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
             <input id="user-search" type="text" class="form-control" placeholder="Cari nama / email..." autocomplete="off">
             <button class="btn btn-outline-secondary" type="button" id="user-search-clear" title="Clear">Clear</button>
         </div>
-        <div class="btn-group" role="group">
+        <div class="btn-group users-export-group" role="group">
             <a href="{{ route('admin.users.exportPdf', ['role' => request('role'), 'category_id' => request('category_id')]) }}" class="btn btn-sm btn-warning text-dark" title="Download" download>
                 <i class="fa-solid fa-download me-1"></i>Download
             </a>
@@ -111,7 +172,7 @@
             </button>
         </div>
         @if($allowCreate)
-            <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary">{{ $btnText }}</a>
+            <a href="{{ route('admin.users.create', ['role' => $role]) }}" class="btn btn-primary users-create-btn">{{ $btnText }}</a>
         @endif
     </div>
 </div>

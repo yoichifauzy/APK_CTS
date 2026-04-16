@@ -18,7 +18,7 @@
         <td><span class="badge text-bg-secondary">{{ $u->role }}</span></td>
         @if(!($readOnly ?? false))
             <td class="text-end">
-                <div class="d-flex justify-content-end gap-2">
+                <div class="d-flex justify-content-end gap-2 users-action-group">
                     @if(($isSuperAdmin ?? false))
                         <button
                             type="button"

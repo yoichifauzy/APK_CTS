@@ -65,6 +65,15 @@
             text-align: center;
         }
 
+        .superadmin-action-wrap {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .superadmin-action-wrap .btn {
+            flex: 1 1 100%;
+        }
+
         h1.h3 {
             font-size: 1.25rem;
         }
@@ -235,7 +244,7 @@
                 @elseif($role === 'super_admin')
                     <h5 class="card-title"><i class="fa-solid fa-crown me-2"></i>Super Admin Dashboard</h5>
 
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-2 superadmin-action-wrap">
                         <a class="btn btn-primary" href="{{ route('admin.users.index', ['role' => 'admin']) }}">
                             <i class="fa-solid fa-user-shield me-2"></i>Kelola Admin
                         </a>

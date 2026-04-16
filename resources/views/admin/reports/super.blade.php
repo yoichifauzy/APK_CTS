@@ -28,12 +28,43 @@
     .row-status-in_progress > td, .row-status-in_progress > th { background-color: rgba(var(--bs-warning-rgb), 0.10); }
     .row-status-resolved > td, .row-status-resolved > th { background-color: rgba(var(--bs-success-rgb), 0.06); }
     .row-status-closed > td, .row-status-closed > th { background-color: rgba(var(--bs-danger-rgb), 0.06); }
+
+    .super-report-toolbar {
+        gap: 0.75rem;
+    }
+
+    .super-report-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    @media (max-width: 768px) {
+        .super-report-toolbar {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+
+        .super-report-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .super-report-actions .btn {
+            flex: 1 1 100%;
+        }
+
+        .super-report-filter .btn {
+            width: 100%;
+        }
+    }
 </style>
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 super-report-toolbar">
         <h1 class="h3 mb-0">Laporan Tiket (Super Admin)</h1>
-        <div class="d-flex gap-2">
+        <div class="super-report-actions">
             <a class="btn btn-sm btn-warning text-dark" href="{{ route('admin.ticketReports.exportPdf', request()->only(['from','to','status'])) }}">
                 <i class="fa-solid fa-download me-1"></i>Download
             </a>
@@ -46,7 +77,7 @@
         </div>
     </div>
 
-    <form method="GET" class="row g-2 align-items-end mb-3">
+    <form method="GET" class="row g-2 align-items-end mb-3 super-report-filter">
         <div class="col-md-3">
             <label class="form-label">Dari Tanggal</label>
             <input type="date" class="form-control" name="from" value="{{ $from }}">

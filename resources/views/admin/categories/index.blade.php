@@ -8,6 +8,24 @@
 
 @section('content')
 <style>
+    .categories-toolbar {
+        gap: 0.75rem;
+    }
+
+    .categories-toolbar-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .categories-search,
+    .categories-export-group,
+    .categories-create-btn {
+        flex: 0 1 auto;
+    }
+
     /* Responsive categories table */
     @media (max-width: 992px) {
         .table-responsive {
@@ -25,9 +43,32 @@
             font-size: 13px;
         }
 
-        .d-flex.justify-content-between {
+        .categories-toolbar {
             flex-direction: column;
+            align-items: stretch !important;
             gap: 10px;
+        }
+
+        .categories-toolbar-right {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .categories-search,
+        .categories-export-group,
+        .categories-create-btn {
+            width: 100%;
+            max-width: 100% !important;
+        }
+
+        .categories-export-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .categories-export-group .btn {
+            flex: 1 1 100%;
         }
 
         .btn-primary {
@@ -65,15 +106,15 @@
     }
 </style>
 <div class="container-fluid">
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 categories-toolbar">
     <h1 class="h3 mb-0">Manajemen Kategori</h1>
-    <div class="d-flex gap-2">
-        <div class="input-group" style="max-width: 360px;">
+    <div class="categories-toolbar-right">
+        <div class="input-group categories-search" style="max-width: 360px;">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
             <input id="category-search" type="text" class="form-control" placeholder="Cari nama / slug..." autocomplete="off">
             <button class="btn btn-outline-secondary" type="button" id="category-search-clear" title="Clear">Clear</button>
         </div>
-        <div class="btn-group" role="group">
+        <div class="btn-group categories-export-group" role="group">
             <a href="{{ route('admin.categories.exportPdf') }}" class="btn btn-sm btn-warning text-dark" title="Download" download>
                 <i class="fa-solid fa-download me-1"></i>Download
             </a>
@@ -84,8 +125,7 @@
                 <i class="fa-solid fa-print me-1"></i>PDF/Cetak
             </button>
         </div>
-        </div>
-        <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">Tambah Kategori</a>
+        <a href="{{ route('admin.categories.create') }}" class="btn btn-primary categories-create-btn">Tambah Kategori</a>
     </div>
 </div>
 

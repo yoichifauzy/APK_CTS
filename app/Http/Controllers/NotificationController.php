@@ -96,6 +96,7 @@ class NotificationController extends Controller
                     $items[] = [
                         'event' => 'ticket_updated',
                         'type' => 'success',
+                        'sound' => 'status',
                         'title' => (string) ($t->title ?? 'Ticket'),
                         'message' => 'Update: ' . ucfirst(str_replace('_', ' ', (string) ($t->status ?? '-'))),
                         'ticket_id' => $ticketId,
@@ -115,6 +116,7 @@ class NotificationController extends Controller
                 $items[] = [
                     'event' => 'ticket_created',
                     'type' => 'info',
+                    'sound' => 'new',
                     'title' => 'Tiket Baru',
                     'message' => $countMsg ?: 'Tiket baru masuk',
                     'ticket_id' => $ticketId,
@@ -130,6 +132,7 @@ class NotificationController extends Controller
             $items[] = [
                 'event' => 'ticket_updated',
                 'type' => 'success',
+                'sound' => 'status',
                 'title' => (string) ($t->title ?? 'Ticket'),
                 'message' => 'Update: ' . ucfirst(str_replace('_', ' ', (string) ($t->status ?? '-'))),
                 'ticket_id' => $ticketId,
@@ -145,6 +148,7 @@ class NotificationController extends Controller
             $items[] = [
                 'event' => 'admin_open_summary',
                 'type' => 'info',
+                'sound' => 'new',
                 'title' => 'Tiket Open',
                 'message' => 'Ada ' . $openUnassignedCount . ' tiket open belum ditugaskan',
                 'ticket_id' => null,
@@ -160,6 +164,7 @@ class NotificationController extends Controller
             $items[] = [
                 'event' => 'customer_open_summary',
                 'type' => 'warning',
+                'sound' => 'status',
                 'title' => 'Tiket Anda Masih Open',
                 'message' => 'Ada ' . $customerOpenCount . ' tiket belum diproses',
                 'ticket_id' => null,

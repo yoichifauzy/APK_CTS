@@ -7,6 +7,17 @@
 @section('title', 'Edit Kategori')
 
 @section('content')
+<style>
+    @media (max-width: 576px) {
+        .category-edit-actions {
+            flex-direction: column;
+        }
+
+        .category-edit-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -24,7 +35,7 @@
                             <label class="form-label">Deskripsi</label>
                             <textarea name="description" class="form-control">{{ old('description', $category->description) }}</textarea>
                         </div>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 category-edit-actions">
                             <button class="btn btn-primary">Simpan</button>
                             <a href="{{ route('admin.categories.index') }}" class="btn btn-outline-secondary">Batal</a>
                         </div>
